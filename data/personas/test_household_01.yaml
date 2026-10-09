@@ -1,0 +1,39 @@
+﻿# data/personas/test_household_01.yaml
+# Synthetic test persona — NOT a real person. Used only for unit tests and demos.
+
+household_id: "test-001"
+village: "Nayapara"
+panchayat: "Rampur Gram Panchayat"
+district: "Raipur"
+state: "Chhattisgarh"
+language_pref: "hi-IN"
+
+members:
+  - name: "Ramesh Kumar (TEST)"
+    dob: "1985-03-15"
+    gender: "male"
+    education_level: "secondary"
+    occupation: "farmer"
+    caste_category: "obc"
+    is_disabled: false
+    land_acres: 2.5
+
+  - name: "Sunita Devi (TEST)"
+    dob: "1988-07-22"
+    gender: "female"
+    education_level: "primary"
+    occupation: "homemaker"
+    caste_category: "obc"
+    is_disabled: false
+    land_acres: 0
+
+  - name: "Arun Kumar (TEST)"
+    dob: "2006-11-10"
+    gender: "male"
+    education_level: "middle"
+    occupation: "student"
+    caste_category: "obc"
+    is_disabled: false
+    land_acres: 0
+
+notes: "TEST PERSONA — not real. Created for unit tests only."
