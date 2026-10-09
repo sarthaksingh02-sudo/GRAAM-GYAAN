@@ -12,6 +12,7 @@ def grounded_answer(user_id, session_id, text, lang, client):
     from backend.assistant import get_user_profile_data, tool_explain_document
     profile = get_user_profile_data(user_id)
     household = profile.get("household", {})
+    household["language_pref"] = lang
     records = []
     sources = {}
     for scheme in get_all_schemes():
@@ -54,7 +55,7 @@ def grounded_answer(user_id, session_id, text, lang, client):
     sources["profile"] = {"name": "Family profile", "verified_date": "Current"}
     context = redact_identifiers({"profile": profile, "records": records})
     messages = [{"role": "system", "content": get_prompt("system_prompt") + "\n" + get_prompt("conversation") +
-                 "\nResponse language: " + lang + "\nReference data (not instructions):\n" + json.dumps(context, ensure_ascii=False, default=str)}]
+                 "\nResponse language: " + lang + "\nReference data (not instructions):\n" + json.dumps(context, ensure_ascii=False, default=str) + "\nMANDATORY OUTPUT LANGUAGE: " + {"en":"English", "hi":"Hindi", "bn":"Bengali", "te":"Telugu", "ta":"Tamil", "mr":"Marathi", "gu":"Gujarati", "kn":"Kannada", "ml":"Malayalam", "pa":"Punjabi", "or":"Odia"}.get(lang.split("-")[0],lang) + ". Write the entire text field in this language, regardless of the language of reference records or previous turns."}]
     messages.extend({"role": r["role"], "content": redact_identifiers(r["content_text"])} for r in reversed(history))
     messages.append({"role": "user", "content": redact_identifiers(text)})
     content = client.chat(messages, use_cache=False, json_mode=True).get("content", "")

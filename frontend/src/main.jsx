@@ -41,7 +41,7 @@ function App() {
 
   async function refreshProfile() {
     try {const p = await request('/api/profile'); setProfile(p); setLocation(p.household); setConsent(!!p.household.consentGiven); return p;}
-    catch (e) {if ([401,403,404].includes(e.status)) setProfile(null); if (navigator.onLine) setError(e.message);}
+    catch (e) {if ([401,403,404].includes(e.status)) setProfile(null); else if (navigator.onLine) setError(e.message);}
   }
   async function loadStatus() {
     try {setHealth(await request('/healthz'));} catch {setHealth(null);}

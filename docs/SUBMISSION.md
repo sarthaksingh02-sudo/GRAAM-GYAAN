@@ -17,7 +17,7 @@ The main challenges were connecting the frontend to a reliable AI backend, handl
 https://github.com/sarthaksingh02-sudo/GRAAM-GYAAN
 
 # Live Project / Deployment Link
-Pending verified deployment. Replace this line with the tested Vercel URL; localhost is not a public deployment.
+https://graam-gyaan-three.vercel.app/
 
 # Submission accuracy
 The MVP does not guarantee exhaustive or always-current government data. District discovery depends on accessible official websites. Local saved scheme records are a limited catalogue, and eligibility is preliminary. Free Render hosting uses temporary storage that may reset. Account login and recovery are not implemented.
