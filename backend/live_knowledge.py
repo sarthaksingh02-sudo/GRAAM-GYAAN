@@ -95,6 +95,8 @@ def collect(region):
             href = urljoin(page_url, a["href"])
             if href in seen or len(title) < 18 or not official(href):
                 continue
+            if urlparse(href).hostname != urlparse(root_url).hostname:
+                continue
             kind = "scheme" if "/scheme/" in href else "notice"
             if kind != "scheme" and not re.search(r"project|construction|road|water supply|development|tender|acquisition|action plan|परियोजना|निर्माण|विकास|निविदा", title, re.I):
                 continue

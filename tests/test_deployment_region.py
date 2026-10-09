@@ -53,3 +53,15 @@ def test_only_official_https_sources():
     assert not live.official("https://jaunpur.nic.in.evil.example/")
     assert not live.official("http://127.0.0.1/")
     assert not live.official("https://example.gov.in:9999/")
+
+
+def test_district_parser_keeps_scheme_dates_and_rejects_department_links(monkeypatch):
+    from bs4 import BeautifulSoup
+    home = '<title>District Jaunpur</title><main>Uttar Pradesh<a href="/schemes/">Schemes</a><a href="https://urbandevelopment.up.nic.in/">Urban Development Department</a><a href="/notice/road-work/">Road construction tender</a></main>'
+    schemes = '<main><div><h2>Example scheme</h2><p>Saved terms</p><div>Publish date: 11/12/2018</div><a aria-label="Example scheme for rural households, View Details" href="/scheme/example/">View Details</a></div></main>'
+    monkeypatch.setattr(live,"page",lambda url:(url,BeautifulSoup(schemes if url.endswith('/schemes/') else home,'html.parser')))
+    result=live.collect({"district":"Jaunpur","state":"Uttar Pradesh"})
+    assert len(result["schemes"]) == 1
+    assert result["schemes"][0]["publishedDate"] == "11/12/2018"
+    assert [item["title"] for item in result["projects"]] == ["Road construction tender"]
+    assert all(item["scope"]=="district" for item in result["projects"])
