@@ -6,9 +6,12 @@ let pendingAssistantAction = null;
 let currentJobId = null;
 let mediaRecorder = null;
 let audioChunks = [];
+let isRecording = false;
+let userProfile = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   initPWA();
+  loadUserProfile();
   loadHomeTiles();
   loadIntentsChips();
   setupEventListeners();
@@ -30,6 +33,7 @@ function setupEventListeners() {
       currentLang = e.target.value;
       loadHomeTiles();
       loadIntentsChips();
+      loadUserProfile();
       showToast("भाषा बदली गई / Language updated");
     });
   }
@@ -54,7 +58,79 @@ function showToast(msg) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Home Screen Tiles & Intents
+// 1. User Profile & Location Management
+// ---------------------------------------------------------------------------
+async function loadUserProfile() {
+  try {
+    const res = await fetch(`/api/profile?lang=${currentLang}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    userProfile = data;
+
+    const h = data.household || {};
+    const village = h.village || "Nayapara";
+    const district = h.district || "Varanasi";
+    const bannerText = `${village}, ${district}`;
+
+    const bannerEl = document.getElementById("bannerVillageName");
+    if (bannerEl) {
+      bannerEl.innerText = bannerText;
+    }
+
+    // Populate inputs in profile modal
+    if (document.getElementById("locVillage")) document.getElementById("locVillage").value = h.village || "";
+    if (document.getElementById("locPanchayat")) document.getElementById("locPanchayat").value = h.panchayat || "";
+    if (document.getElementById("locDistrict")) document.getElementById("locDistrict").value = h.district || "";
+    if (document.getElementById("locState")) document.getElementById("locState").value = h.state || "";
+  } catch (e) {
+    console.warn("Could not load user profile:", e);
+  }
+}
+
+function openProfileModal() {
+  document.getElementById("profileModal").classList.remove("hidden");
+}
+
+function closeProfileModal() {
+  document.getElementById("profileModal").classList.add("hidden");
+}
+
+async function saveLocationProfile() {
+  const village = document.getElementById("locVillage").value.trim() || "Nayapara";
+  const panchayat = document.getElementById("locPanchayat").value.trim() || "Rampur Gram Panchayat";
+  const district = document.getElementById("locDistrict").value.trim() || "Varanasi";
+  const state = document.getElementById("locState").value.trim() || "Uttar Pradesh";
+
+  try {
+    const res = await fetch("/api/consent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        village: village,
+        panchayat: panchayat,
+        district: district,
+        state: state,
+        language_pref: currentLang,
+        consent: true,
+      }),
+    });
+
+    if (res.ok) {
+      closeProfileModal();
+      showToast("📍 स्थान सफलतापूर्वक अपडेट किया गया! / Location Saved!");
+      await loadUserProfile();
+      loadHomeTiles();
+    } else {
+      showToast("त्रुटि: स्थान अपडेट नहीं हो सका");
+    }
+  } catch (e) {
+    console.error("Save location error:", e);
+    showToast("त्रुटि: सर्वर से संपर्क नहीं हो पाया");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2. Home Screen Tiles & Intents
 // ---------------------------------------------------------------------------
 async function loadHomeTiles() {
   const grid = document.getElementById("homeTilesGrid");
@@ -138,18 +214,21 @@ function handleTileClick(tile) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Voice Assistant (PTT & Chat)
+// 3. Voice Assistant (PTT, Audio & Text Chat)
 // ---------------------------------------------------------------------------
 function openVoiceAssistant(initialQuery = "") {
   document.getElementById("voiceModal").classList.remove("hidden");
-  document.getElementById("voiceStatusText").innerText = "आपकी बात सुन रहा हूँ...";
-  document.getElementById("assistantResponseText").innerText = "नमस्ते! मैं आपकी क्या सहायता कर सकता हूँ?";
+  const inputEl = document.getElementById("voiceTextInput");
+  if (inputEl) inputEl.value = "";
+
+  document.getElementById("voiceStatusText").innerText = "सहायक तैयार है / Assistant Ready";
+  document.getElementById("assistantResponseText").innerText = "नमस्ते! आप बोलकर या लिखकर सरकारी योजनाओं के बारे में पूछ सकते हैं।";
   document.getElementById("sourcesBox").innerHTML = "";
+
+  setMicRecordingUI(false);
 
   if (initialQuery) {
     sendTextMessage(initialQuery);
-  } else {
-    startAudioRecording();
   }
 }
 
@@ -162,9 +241,19 @@ function handleChipClick(queryText) {
   openVoiceAssistant(queryText);
 }
 
+function sendVoiceTypedMessage() {
+  const inputEl = document.getElementById("voiceTextInput");
+  if (!inputEl) return;
+  const text = inputEl.value.trim();
+  if (!text) return;
+  inputEl.value = "";
+  sendTextMessage(text);
+}
+
 async function sendTextMessage(text) {
   document.getElementById("userTranscriptText").innerText = `"${text}"`;
   document.getElementById("voiceStatusText").innerText = "सोच रहा हूँ (Processing)...";
+  document.getElementById("assistantResponseText").innerText = "जानकारी खोजी जा रही है...";
 
   try {
     const res = await fetch("/api/chat", {
@@ -186,7 +275,7 @@ async function sendTextMessage(text) {
 }
 
 function displayAssistantResponse(data) {
-  document.getElementById("voiceStatusText").innerText = "सहायक का उत्तर:";
+  document.getElementById("voiceStatusText").innerText = "सहायक का उत्तर / Assistant:";
   document.getElementById("assistantResponseText").innerText = data.text;
 
   // Sources tags
@@ -195,7 +284,7 @@ function displayAssistantResponse(data) {
   (data.sources || []).forEach((src) => {
     const tag = document.createElement("span");
     tag.className = "source-tag";
-    tag.innerText = `🔍 ${src.name}`;
+    tag.innerText = `🔍 ${src.name || "सरकारी स्रोत"}`;
     sourcesBox.appendChild(tag);
   });
 
@@ -204,7 +293,9 @@ function displayAssistantResponse(data) {
   if (data.audioUrl && audioPlayer) {
     audioPlayer.src = data.audioUrl;
     audioPlayer.classList.remove("hidden");
-    audioPlayer.play().catch(() => {});
+    audioPlayer.play().catch((err) => {
+      console.log("Audio autoplay prevented by browser:", err);
+    });
   }
 
   // Confirmation gate
@@ -225,32 +316,78 @@ function confirmAssistantAction(confirmed) {
   sendTextMessage(reply);
 }
 
+function toggleVoiceRecording() {
+  if (isRecording) {
+    stopAudioRecording();
+  } else {
+    startAudioRecording();
+  }
+}
+
+function setMicRecordingUI(recording) {
+  isRecording = recording;
+  const btn = document.getElementById("btnRecordToggle");
+  const icon = document.getElementById("btnMicIcon");
+  const label = document.getElementById("btnMicLabel");
+  const visualizer = document.getElementById("voiceVisualizer");
+  const pulse = document.getElementById("voicePulseDot");
+
+  if (recording) {
+    if (btn) btn.classList.add("recording");
+    if (icon) icon.innerText = "⏹️";
+    if (label) label.innerText = "बोलना बंद करें (Stop)";
+    if (visualizer) visualizer.style.opacity = "1";
+    if (pulse) pulse.style.background = "#d32f2f";
+    document.getElementById("voiceStatusText").innerText = "🎙️ सुन रहा हूँ... बोलिए (Listening)";
+  } else {
+    if (btn) btn.classList.remove("recording");
+    if (icon) icon.innerText = "🎙️";
+    if (label) label.innerText = "बोलना शुरू करें (Speak)";
+    if (visualizer) visualizer.style.opacity = "0.4";
+    if (pulse) pulse.style.background = "#2e7d32";
+  }
+}
+
 function startAudioRecording() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    document.getElementById("voiceStatusText").innerText = "कृपया नीचे प्रश्न टाइप करें";
+    document.getElementById("voiceStatusText").innerText = "माइक्रोफ़ोन उपलब्ध नहीं है। आप नीचे टाइप कर सकते हैं।";
     return;
   }
 
   navigator.mediaDevices
     .getUserMedia({ audio: true })
     .then((stream) => {
+      setMicRecordingUI(true);
       mediaRecorder = new MediaRecorder(stream);
       audioChunks = [];
-      mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-      mediaRecorder.onstop = () => uploadVoiceAudio();
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          audioChunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        setMicRecordingUI(false);
+        // Stop all audio tracks
+        stream.getTracks().forEach((track) => track.stop());
+        uploadVoiceAudio();
+      };
+
       mediaRecorder.start();
 
-      // Auto stop after 4 seconds
+      // Auto stop after 6 seconds max
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === "recording") {
           mediaRecorder.stop();
         }
-      }, 4000);
+      }, 6000);
     })
     .catch((err) => {
-      console.log("Mic access error:", err);
-      // Fallback
-      sendTextMessage("मेरे लिए कौन सी सरकारी योजना है?");
+      console.warn("Microphone access denied or error:", err);
+      setMicRecordingUI(false);
+      document.getElementById("voiceStatusText").innerText = "माइक्रोफ़ोन अनुमति नहीं मिली। कृपया नीचे टाइप करें।";
+      showToast("माइक्रोफ़ोन अनुमति नहीं मिली");
     });
 }
 
@@ -258,32 +395,41 @@ function stopAudioRecording() {
   if (mediaRecorder && mediaRecorder.state === "recording") {
     mediaRecorder.stop();
   }
+  setMicRecordingUI(false);
 }
 
 async function uploadVoiceAudio() {
+  if (!audioChunks || audioChunks.length === 0) {
+    return;
+  }
+
   const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
   const formData = new FormData();
   formData.append("file", audioBlob, "voice_query.wav");
   formData.append("sessionId", currentSessionId);
   formData.append("lang", currentLang);
 
-  document.getElementById("voiceStatusText").innerText = "सारंग STT ट्रांसक्रिप्शन जारी...";
+  document.getElementById("voiceStatusText").innerText = "Saaras STT ट्रांसक्रिप्शन एवं उत्तर तैयार हो रहा है...";
 
   try {
     const res = await fetch("/api/voice", {
       method: "POST",
       body: formData,
     });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
     const data = await res.json();
     document.getElementById("userTranscriptText").innerText = `"${data.transcript}"`;
     displayAssistantResponse(data.assistant);
   } catch (e) {
     console.error("Voice upload error:", e);
+    document.getElementById("voiceStatusText").innerText = "ऑडियो समझने में त्रुटि हुई। कृपया दोबारा बोलें या टाइप करें।";
   }
 }
 
 // ---------------------------------------------------------------------------
-// 3. Document Scanning & OCR
+// 4. Document Scanning & OCR
 // ---------------------------------------------------------------------------
 function openScanModal() {
   document.getElementById("scanModal").classList.remove("hidden");
@@ -380,13 +526,14 @@ async function confirmExtractedDocument() {
     const data = await res.json();
     closeScanModal();
     showToast("दस्तावेज़ सफलतापूर्वक प्रोफाइल से जोड़ा गया! ✓");
+    loadUserProfile();
   } catch (e) {
     showToast("पुष्टि में त्रुटि");
   }
 }
 
 // ---------------------------------------------------------------------------
-// 4. Content Viewers (Schemes, Projects, Guides, Family)
+// 5. Content Viewers (Schemes, Projects, Guides, Family)
 // ---------------------------------------------------------------------------
 function openContentModal(title, contentHtml) {
   document.getElementById("contentModalTitle").innerText = title;
@@ -406,17 +553,19 @@ async function openSchemesViewer() {
     let html = `<h4>पात्र एवं संभावित योजनाएं (${data.count || 0})</h4>`;
     (data.schemes || []).forEach((s) => {
       const statusClass =
-        s.eligibility.status === "ELIGIBLE"
+        s.eligibility && s.eligibility.status === "ELIGIBLE"
           ? "badge-eligible"
-          : s.eligibility.status === "POSSIBLE"
+          : s.eligibility && s.eligibility.status === "POSSIBLE"
           ? "badge-possible"
           : "badge-not-eligible";
+
+      const statusText = s.eligibility ? s.eligibility.status : s.status || "ELIGIBLE";
 
       html += `
         <div class="content-card">
           <div class="content-card-header">
             <strong>${s.name}</strong>
-            <span class="badge-status ${statusClass}">${s.eligibility.status}</span>
+            <span class="badge-status ${statusClass}">${statusText}</span>
           </div>
           <p><strong>लाभ:</strong> ${s.benefit}</p>
           <small style="color:#666">स्रोत: ${s.sourceUrl} (${s.verifiedDate})</small>
@@ -496,7 +645,7 @@ async function openFamilyViewer() {
     const res = await fetch(`/api/profile?lang=${currentLang}`);
     const data = await res.json();
 
-    let html = `<h4>परिवार के सदस्य (${data.familyMembers.length})</h4>`;
+    let html = `<h4>परिवार के सदस्य (${(data.familyMembers || []).length})</h4>`;
     (data.familyMembers || []).forEach((m) => {
       const missTitles = (m.missingDocuments || [])
         .filter((d) => d.mandatory)
@@ -506,7 +655,7 @@ async function openFamilyViewer() {
       html += `
         <div class="content-card">
           <strong>${m.name} (${m.relation})</strong>
-          <p>आयु: ${m.ageYears !== null ? m.ageYears + " वर्ष" : "—"} | व्यवसाय: ${m.occupation || "—"}</p>
+          <p>आयु: ${m.ageYears !== null && m.ageYears !== undefined ? m.ageYears + " वर्ष" : "—"} | व्यवसाय: ${m.occupation || "—"}</p>
           <p style="color: #c62828; font-size: 12px;"><strong>बाकी दस्तावेज़:</strong> ${missTitles || "कोई नहीं (सभी पूर्ण)"}</p>
         </div>
       `;
@@ -519,7 +668,7 @@ async function openFamilyViewer() {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Exports (PDF, Text, JSON)
+// 6. Exports (PDF, Text, JSON)
 // ---------------------------------------------------------------------------
 function openExportModal() {
   document.getElementById("exportModal").classList.remove("hidden");
