@@ -24,3 +24,6 @@ steps:
   - "Visit nearest Post Office or authorized commercial bank branch"
   - "Fill Form SSA-1 with minimum deposit of ₹250"
   - "Collect SSY passbook"
+
+# This snapshot contains only preliminary checks, not the complete official policy.
+rules_complete: false

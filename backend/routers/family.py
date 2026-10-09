@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from backend.config_loader import get_app_config
 from backend.db import get_conn
+from backend.active_user import get_active_user_id
 from backend.document_processor import calculate_missing_documents, compute_age_years
 
 log = logging.getLogger(__name__)
@@ -56,6 +57,9 @@ class FamilyMemberUpdate(BaseModel):
 
 
 class ProfileUpdateRequest(BaseModel):
+    block: Optional[str] = None
+    tehsil: Optional[str] = None
+    village_code: Optional[str] = None
     village: Optional[str] = None
     panchayat: Optional[str] = None
     district: Optional[str] = None
@@ -63,23 +67,19 @@ class ProfileUpdateRequest(BaseModel):
     language_pref: Optional[str] = None
 
 
-def _get_user_id(x_user_id: Optional[str] = None) -> int:
-    conn = get_conn()
+def _get_user_id(x_user_id=None):
     try:
-        cur = conn.cursor()
-        if x_user_id and x_user_id.isdigit():
-            cur.execute("SELECT id FROM users WHERE id = ?", (int(x_user_id),))
-        else:
-            cur.execute("SELECT id FROM users ORDER BY id ASC LIMIT 1")
-        row = cur.fetchone()
-        if not row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error": "PROFILE_NOT_FOUND", "message": "No profile found. Please record consent first."},
-            )
-        return row["id"]
-    finally:
-        conn.close()
+        return get_active_user_id(x_user_id)
+    except HTTPException as exc:
+        if exc.status_code == 403:
+            conn = get_conn()
+            try:
+                row = conn.execute("SELECT id FROM users WHERE id=?", (x_user_id,)).fetchone() if x_user_id else conn.execute("SELECT id FROM users LIMIT 1").fetchone()
+            finally:
+                conn.close()
+            if not row:
+                raise HTTPException(404, "No profile found. Please record consent first.")
+        raise
 
 
 @router.get("/profile")
@@ -142,6 +142,7 @@ def get_profile(x_user_id: Optional[str] = Header(default=None)) -> dict:
                 "id": user_row["id"],
                 "village": user_row["village"],
                 "panchayat": user_row["panchayat"],
+                **{k: user_row[k] for k in ("block", "tehsil", "village_code")},
                 "district": user_row["district"],
                 "state": user_row["state"],
                 "language_pref": user_row["language_pref"],
@@ -176,6 +177,7 @@ def update_profile(req: ProfileUpdateRequest, x_user_id: Optional[str] = Header(
             """,
             (req.village, req.panchayat, req.district, req.state, req.language_pref, now_iso, user_id),
         )
+        conn.execute("UPDATE users SET block=COALESCE(?,block), tehsil=COALESCE(?,tehsil), village_code=COALESCE(?,village_code) WHERE id=?", (req.block,req.tehsil,req.village_code,user_id))
         conn.commit()
         return {"success": True, "message": "Profile updated successfully."}
     finally:

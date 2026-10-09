@@ -1,0 +1,23 @@
+title: 'Child health: when to seek urgent care'
+title_hi: 'बच्चों का स्वास्थ्य: तुरंत सहायता कब लें'
+source_url: https://nhm.gov.in/New-Update-2022-24/CH-Programmes/HBNC-%26-HBYC-Resource-%20Material/HBNC_%26_HBYC_Jobaid_for_ASHA.pdf
+verified_date: '2026-10-09'
+steps:
+- id: urgent
+  title: Recognise danger signs
+  title_hi: खतरे के संकेत पहचानें
+  description: Take a child immediately to a health centre if they cannot drink or
+    breastfeed, vomit everything, have fits, are unusually sleepy or unconscious,
+    have high fever, blood in stools, or fast and difficult breathing.
+  description_hi: बच्चा दूध या पानी न पी सके, सब कुछ उलट दे, दौरे आएं, बहुत सुस्त
+    या बेहोश हो, तेज बुखार हो, मल में खून हो या तेज और कठिन सांस ले तो तुरंत स्वास्थ्य
+    केंद्र ले जाएं।
+- id: scope
+  title: Get professional assessment
+  title_hi: स्वास्थ्यकर्मी से जाँच कराएं
+  description: This guide explains referral warning signs from the Ministry of Health
+    ASHA job aid. It does not diagnose illness or prescribe medicines. For other symptoms,
+    consult an ASHA, ANM or clinician.
+  description_hi: यह स्वास्थ्य मंत्रालय की आशा मार्गदर्शिका के खतरे के संकेत बताता
+    है। यह रोग की पहचान या दवा नहीं बताता। अन्य लक्षणों के लिए आशा, एएनएम या चिकित्सक
+    से सलाह लें।

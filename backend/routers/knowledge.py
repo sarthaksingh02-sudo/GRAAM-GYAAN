@@ -10,6 +10,8 @@ import logging
 from pathlib import Path
 from typing import Any, List, Optional
 
+from backend.active_user import get_active_user_id
+
 from fastapi import APIRouter, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
@@ -80,7 +82,7 @@ def get_schemes(
 
     sectors = _get_sectors_config()
 
-    user_id = int(x_user_id) if x_user_id and x_user_id.isdigit() else 1
+    user_id = get_active_user_id(x_user_id)
     profile = get_user_profile_data(user_id)
 
     evaluated_list = []
@@ -144,7 +146,7 @@ def get_scheme_detail(
             },
         )
 
-    user_id = int(x_user_id) if x_user_id and x_user_id.isdigit() else 1
+    user_id = get_active_user_id(x_user_id)
     profile = get_user_profile_data(user_id)
     eval_res = evaluate_scheme_eligibility(match, profile)
 
@@ -181,11 +183,11 @@ def get_projects(
     """
     Get regional projects with Centre and State shown separately.
     """
-    user_id = int(x_user_id) if x_user_id and x_user_id.isdigit() else 1
+    user_id = get_active_user_id(x_user_id)
     profile = get_user_profile_data(user_id)
 
-    user_dist = district or profile.get("household", {}).get("district", "Varanasi")
-    user_state = state or profile.get("household", {}).get("state", "Uttar Pradesh")
+    user_dist = district or profile.get("household", {}).get("district")
+    user_state = state or profile.get("household", {}).get("state")
 
     projects_list = get_all_projects()
     if not projects_list:
@@ -199,7 +201,12 @@ def get_projects(
             "missing_file": "data/real/projects/*.yaml",
         }
 
-    p_data = projects_list[0]
+    p_data = next((p for p in projects_list if
+        str(p.get("district", "")).casefold() == str(user_dist or "").casefold()
+        and str(p.get("state", "")).casefold() == str(user_state or "").casefold()), None)
+    if not p_data:
+        return {"district": user_dist, "stateName": user_state, "centre": [], "state": [],
+                "missing_data": True, "message": get_i18n_message("INFO_NOT_AVAILABLE", lang)}
     p_dict = p_data.get("projects", {})
     centre_raw = p_dict.get("centre", [])
     state_raw = p_dict.get("state", [])
@@ -228,7 +235,7 @@ def get_projects(
 @router.get("/guides")
 def get_all_need_guides(lang: str = "hi-IN") -> dict[str, Any]:
     """List all 5 need-guides as icon cards with source and date."""
-    guide_topics = ["banking", "aadhaar_pan", "ration", "new_schemes", "family"]
+    guide_topics = ["banking", "aadhaar_pan", "ration", "new_schemes", "family", "health", "livelihood"]
     tiles = {t.get("guide_topic"): t for t in _get_home_tiles_config() if t.get("guide_topic")}
 
     result = []
@@ -263,7 +270,7 @@ def get_all_need_guides(lang: str = "hi-IN") -> dict[str, Any]:
 
 
 @router.get("/guides/{topic}")
-def get_guide_detail(topic: str, lang: str = "hi-IN") -> dict[str, Any]:
+def get_guide_detail(topic: str, lang: str = "hi-IN", audio: bool = False) -> dict[str, Any]:
     """Get specific need-guide with voice synthesis."""
     g = get_needs_guide(topic)
     if not g:
@@ -291,13 +298,14 @@ def get_guide_detail(topic: str, lang: str = "hi-IN") -> dict[str, Any]:
 
     # Generate Bulbul TTS audio for guide summary
     audio_url = None
-    if formatted_steps:
+    if formatted_steps and audio:
         summary_spoken = f"{title}. " + " ".join(s["title"] for s in formatted_steps[:2])
         client = SarvamClient()
         try:
             tts_res = client.synthesize(summary_spoken, language_code=lang)
             if tts_res.get("audio_b64"):
-                conv_dir = BASE_DIR / "uploads" / "audio"
+                from backend.config_loader import get_app_config
+                conv_dir = BASE_DIR / get_app_config().get("audio_output_dir", "uploads/audio")
                 conv_dir.mkdir(parents=True, exist_ok=True)
                 audio_fn = f"guide_{topic}_{lang}.wav"
                 (conv_dir / audio_fn).write_bytes(base64.b64decode(tts_res["audio_b64"]))
@@ -319,7 +327,7 @@ def get_guide_detail(topic: str, lang: str = "hi-IN") -> dict[str, Any]:
 @router.get("/missing-documents")
 def get_all_missing_documents(x_user_id: Optional[str] = Header(default=None)) -> dict[str, Any]:
     """Get per-member missing documents checklist."""
-    user_id = int(x_user_id) if x_user_id and x_user_id.isdigit() else 1
+    user_id = get_active_user_id(x_user_id)
     profile = get_user_profile_data(user_id)
 
     members = profile.get("familyMembers", [])
@@ -342,3 +350,34 @@ def get_all_missing_documents(x_user_id: Optional[str] = Header(default=None)) -
         "totalMissingMandatory": total_missing,
         "members": checklist,
     }
+
+
+@router.get("/catalog/schemes")
+def public_scheme_catalog(lang: str = "hi-IN"):
+    """Public snapshots only: safe to cache offline, never household eligibility."""
+    return {"count": len(get_all_schemes()), "catalogOnly": True, "schemes": [
+        {"id": s["id"], "name": s.get("name_hi" if lang.startswith("hi") else "name"),
+         "benefit": s.get("benefit_hi" if lang.startswith("hi") else "benefit"),
+         "status": "NOT_EVALUATED", "eligibility": {"status": "NOT_EVALUATED", "reasons": [], "missingFields": []},
+         "sourceUrl": s.get("source_url"), "verifiedDate": s.get("verified_date"),
+         "documentsRequired": s.get("documents_required", []), "steps": s.get("steps", [])}
+        for s in get_all_schemes()]}
+
+
+@router.get("/suggestions")
+def suggestions(query: str = "", lang: str = "hi-IN", x_user_id: Optional[str] = Header(default=None)):
+    from backend.recommendations import rank_schemes
+    user_id = get_active_user_id(x_user_id)
+    ranked = rank_schemes(get_all_schemes(), get_user_profile_data(user_id), query)
+    return {"ranking": "local_tfidf_cosine_after_eligibility", "suggestions": [
+        {"id": r["scheme"]["id"], "name": r["scheme"].get("name_hi" if lang.startswith("hi") else "name"),
+         "eligibility": r["eligibility"], "score": r["score"], "steps": r["scheme"].get("steps", []),
+         "sourceUrl": r["scheme"].get("source_url"), "verifiedDate": r["scheme"].get("verified_date")}
+        for r in ranked]}
+
+
+@router.get("/region-feed")
+def region_feed(refresh: bool = False, x_user_id: Optional[str] = Header(default=None)):
+    from backend.live_knowledge import feed
+    from backend.assistant import get_user_profile_data
+    return feed(get_user_profile_data(get_active_user_id(x_user_id))["household"], force=refresh)

@@ -139,9 +139,10 @@ def test_schemes_endpoint(client):
     assert data["count"] >= 3
     assert data["missing_data"] is False
 
-    # Check top scheme is ELIGIBLE
+    # Curated snapshots contain preliminary rules; do not promise confirmed eligibility.
     top_scheme = data["schemes"][0]
-    assert top_scheme["eligibility"]["status"] == "ELIGIBLE"
+    assert top_scheme["eligibility"]["status"] == "POSSIBLE"
+    assert top_scheme["eligibility"]["preliminary"] is True
     assert "sector" in top_scheme
     assert "sourceUrl" in top_scheme
 
@@ -169,7 +170,8 @@ def test_guides_endpoints(client):
     resp = client.get("/api/guides?lang=hi-IN")
     assert resp.status_code == 200
     guides = resp.json()["guides"]
-    assert len(guides) == 5
+    assert len(guides) == 7
+    assert {"health", "livelihood"}.issubset({g["topic"] for g in guides})
     topics = [g["topic"] for g in guides]
     assert "banking" in topics
     assert "aadhaar_pan" in topics

@@ -5,7 +5,10 @@
 seed:
 	python scripts/seed_demo.py
 
-demo: seed
+build:
+	cd frontend && npm ci && npm run build
+
+demo: build seed
 	@echo "================================================================="
 	@echo "Starting GRAAM-GYAAN in Offline-Ready Demo Mode (DEMO_CACHE=1)"
 	@echo "Open your browser at: http://localhost:8000"
@@ -13,7 +16,7 @@ demo: seed
 	DEMO_CACHE=1 uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
 test:
-	python -m pytest -v
+	python scripts/test_isolated.py
 
 test-demo:
 	python scripts/run_demo_scenario.py

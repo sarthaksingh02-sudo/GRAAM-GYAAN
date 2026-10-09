@@ -1,0 +1,15 @@
+title: "Livelihood: finding rural work"
+title_hi: "आजीविका: ग्रामीण काम की जानकारी"
+source_url: "https://nrega.nic.in"
+verified_date: "2026-03-01"
+steps:
+  - id: job_card
+    title: "Ask about a job card"
+    title_hi: "जॉब कार्ड के बारे में पूछें"
+    description: "The saved MGNREGA source lists applying at the Gram Panchayat for a job card, followed by a written demand for work. Check current local requirements at the Panchayat."
+    description_hi: "सहेजे गए मनरेगा स्रोत के अनुसार ग्राम पंचायत में जॉब कार्ड के लिए आवेदन और काम की लिखित मांग दें। वर्तमान स्थानीय आवश्यकताएं पंचायत से जांचें।"
+  - id: eligibility
+    title: "Review your eligibility"
+    title_hi: "अपनी पात्रता देखें"
+    description: "Open Welfare schemes and review MGNREGA against your family profile. This guide uses the existing scheme snapshot and does not promise job placement or current wage rates."
+    description_hi: "सरकारी योजनाएं खोलकर परिवार की जानकारी के आधार पर मनरेगा की पात्रता देखें। यह गाइड सहेजी गई योजना जानकारी पर आधारित है; नौकरी या वर्तमान मजदूरी की गारंटी नहीं देती।"

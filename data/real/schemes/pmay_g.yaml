@@ -9,9 +9,10 @@ verified_date: "2026-03-01"
 benefit: "Financial assistance of ₹1,20,000 in plain areas (₹1,30,000 in hilly/difficult areas) + 90 days MGNREGA wages for pucca house construction."
 benefit_hi: "पक्के मकान के निर्माण हेतु ₹1,20,000 की सीधी सहायता एवं 90 दिन की मनरेगा मजदूरी।"
 rules:
-  - field: "caste_category"
-    operator: "in"
-    value: ["sc", "st", "obc", "general_bpl"]
+  - field: "official_eligibility_verified"
+    operator: "=="
+    value: true
+    question_if_missing: "Please check the official beneficiary list and complete eligibility with the responsible office. Caste alone does not establish eligibility."
 documents_required:
   - "Aadhaar Card"
   - "Bank Account linked with Aadhaar"
@@ -21,3 +22,6 @@ steps:
   - "Verification through Gram Sabha SECC list"
   - "Geo-tagging of existing kutcha structure via AwaasApp"
   - "First installment disbursed directly to bank account"
+
+# This snapshot contains only preliminary checks, not the complete official policy.
+rules_complete: false

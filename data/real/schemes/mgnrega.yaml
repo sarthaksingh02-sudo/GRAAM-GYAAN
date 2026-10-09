@@ -21,3 +21,6 @@ steps:
   - "Apply to Gram Panchayat for Job Card"
   - "Gram Panchayat issues Job Card within 15 days of application"
   - "Submit written demand for work at Gram Panchayat Bhawan"
+
+# This snapshot contains only preliminary checks, not the complete official policy.
+rules_complete: false

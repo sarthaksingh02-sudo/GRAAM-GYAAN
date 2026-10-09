@@ -25,7 +25,7 @@ from backend.config_loader import (
     get_expected_documents_guide,
     get_mock_doc_result,
 )
-from backend.privacy import mask_value_by_type, sanitize_extracted_dict
+from backend.privacy import mask_value_by_type, sanitize_extracted_dict, redact_identifiers
 from backend.sarvam_client import SarvamClient
 
 log = logging.getLogger(__name__)
@@ -156,6 +156,10 @@ def process_document_job(
         except Exception as e:
             log.warning("Could not download digitised markdown: %s", e)
 
+    if not ocr_text.strip():
+        raise ValueError("No readable text was found in this document")
+    ocr_text = redact_identifiers(ocr_text)
+
     # Step 2: Classify doc type
     doc_type = classify_document(ocr_text, client, language=lang)
     doc_meta = doc_types_cfg.get(doc_type, {})
@@ -260,7 +264,7 @@ def process_document_job(
                     documents_needed = parsed.get("documentsNeeded") or []
             except Exception as e:
                 log.warning("LLM notice extraction parse error: %s", e)
-                summary = "सूचना का विवरण दस्तावेज़ में उपलब्ध है।"
+                raise ValueError("Could not extract the notice. Please retry.") from e
 
         # Bulbul TTS generation for notice explanation
         audio_url = None
@@ -296,4 +300,5 @@ def process_document_job(
         "extractedFields": extracted_fields,
         "noticeDetails": notice_details,
         "isMock": client.mock,
+        "mode": client.mode,
     }

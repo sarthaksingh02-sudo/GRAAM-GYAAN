@@ -86,7 +86,7 @@ def sanitize_extracted_dict(data: dict[str, Any], schema_fields: list[dict[str, 
             sanitized[k] = mask_value_by_type(v, mask_type or "last4")
         elif isinstance(v, list):
             # If array of members or items
-            sanitized[k] = v
+            sanitized[k] = redact_identifiers(v)
         else:
             # Check if value accidentally matches PII pattern
             if isinstance(v, str):
@@ -97,8 +97,20 @@ def sanitize_extracted_dict(data: dict[str, Any], schema_fields: list[dict[str, 
                         v,
                     )
                 else:
-                    sanitized[k] = v
+                    sanitized[k] = redact_identifiers(v)
             else:
-                sanitized[k] = v
+                sanitized[k] = redact_identifiers(v)
 
     return sanitized
+
+
+def redact_identifiers(value):
+    """Recursively redact identifiers in free text, nested OCR and conversations."""
+    if isinstance(value, str):
+        value = re.sub(r"(?<!\d)\d{4}[ -]?\d{4}[ -]?\d{4}(?!\d)", "[ID removed]", value)
+        return re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN removed]", value)
+    if isinstance(value, list):
+        return [redact_identifiers(item) for item in value]
+    if isinstance(value, dict):
+        return {key: redact_identifiers(item) for key, item in value.items()}
+    return value

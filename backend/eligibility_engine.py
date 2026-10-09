@@ -53,7 +53,7 @@ def _evaluate_condition(actual: Any, op: str, expected: Any) -> bool:
     return False
 
 
-def evaluate_scheme_eligibility(
+def _evaluate_saved_rules(
     scheme: dict[str, Any],
     profile: dict[str, Any],
 ) -> dict[str, Any]:
@@ -171,13 +171,23 @@ def _evaluate_context_rules(
 
         is_passed = _evaluate_condition(actual, op, expected)
         if is_passed:
-            reasons.append(f"Matched {field}: {actual} ({op} {expected})")
+            reasons.append(f"Recorded {field.replace('_', ' ')}: {actual}.")
         else:
             failed = True
-            reasons.append(f"Did not meet {field} requirement: {actual} is not {op} {expected}")
+            reasons.append(f"The saved {field.replace('_', ' ')} does not match this scheme’s recorded requirements.")
 
     if failed:
         return "NOT_ELIGIBLE", reasons, []
     if missing_fields:
         return "POSSIBLE", reasons, missing_fields
     return "ELIGIBLE", reasons, []
+
+
+def evaluate_scheme_eligibility(scheme, profile):
+    result = _evaluate_saved_rules(scheme, profile)
+    if scheme.get("rules_complete") is False and result["status"] == "ELIGIBLE":
+        result["status"] = "POSSIBLE"
+        result["reasons"].append("Saved checks match, but official eligibility verification is still required.")
+        result["missingFields"].append({"field": "official_verification", "question": "Please verify complete eligibility with the responsible office or official portal."})
+    result["preliminary"] = scheme.get("rules_complete") is False
+    return result

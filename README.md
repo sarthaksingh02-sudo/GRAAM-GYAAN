@@ -1,144 +1,60 @@
-﻿# GRAAM-GYAAN 🌾🎙️
+# GRAAM-GYAAN
 
-**AI-powered rural welfare assistant — powered by [Sarvam AI](https://sarvam.ai)**
+A Hindi-first React PWA for household profiles, welfare schemes, document review and a source-grounded Sarvam voice assistant.
 
-> *"ग्राम-ज्ञान"* — Village Knowledge.  
-> Every government scheme, health guide, and livelihood resource — in your language, on your device, even offline.
+## Run locally
 
-[![GitHub](https://img.shields.io/badge/GitHub-GRAAM--GYAAN-blue)](https://github.com/sarthaksingh02-sudo/GRAAM-GYAAN)
+Requires Python 3.11+ and Node.js 22+.
 
----
-
-## What it does
-
-GRAAM-GYAAN helps rural Indian households:
-- 🗣️ **Ask by voice** in Hindi/regional languages → get answers read back aloud
-- 📄 **Digitize documents** → extract fields from scheme applications, ID proofs
-- 🏛️ **Find schemes** → eligibility check per family member, with reasons
-- 🌱 **Get health guidance** → sourced from ASHA/MoH only, with referral advice
-- 📶 **Work offline** → service worker caches data, syncs when connected
-
-**AI Stack**: Sarvam AI — Saaras STT · Bulbul TTS · Sarvam Vision Doc AI · Sarvam-105B Chat
-
----
-
-## Quick Start
-
-```bash
-# 1. Clone
-git clone https://github.com/sarthaksingh02-sudo/GRAAM-GYAAN.git
-cd GRAAM-GYAAN
-
-# 2. Install Python deps
-pip install -e ".[dev]"
-
-# 3. Configure
-cp .env.example .env
-# Edit .env → set SARVAM_API_KEY (get one at https://dashboard.sarvam.ai)
-
-# 4. Run smoke test (verify all 4 Sarvam services work)
-python scripts/smoke_sarvam.py
-
-# 5. Init database
-python -m backend.db
-
-# 6. Start backend
-uvicorn backend.main:app --reload
-
-# 7. Start frontend (in another terminal)
-cd frontend && npm install && npm run dev
+```powershell
+python -m pip install -e ".[dev]"
+Copy-Item .env.example .env
+# Set SARVAM_API_KEY in .env. Do not commit this file.
+cd frontend
+npm ci
+npm run build
+cd ..
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-### Run without API key (MOCK mode)
+Open http://127.0.0.1:8000. The backend serves the production React build. After rebuilding, reload the browser; after Python changes, restart the server or run with `--reload`.
 
-```bash
-SARVAM_MOCK=true uvicorn backend.main:app --reload
+For frontend development, run `npm run dev` in `frontend` while the backend runs on port 8000. Vite proxies API requests. The service worker is registered only in production builds.
+
+`.env` is loaded automatically without overwriting environment variables. `SARVAM_MOCK=true` explicitly enables offline synthetic AI responses. `DEMO_CACHE=1` explicitly enables prerecorded demo responses. Neither is silently enabled when a key is missing. `/healthz` reports configured mode, not a guarantee of provider availability. The UI labels mock/demo answers.
+
+## Working flows
+
+- Explicit consent and editable household location; add/edit family members.
+- Same active household across chat, eligibility, missing documents and exports. This is a single-device/operator app, not a multi-tenant authenticated service.
+- Live Sarvam chat with household context, source records, scoped conversation history and validated citation IDs. Profile changes require a session-bound read-back/confirmation.
+- Saaras transcription preserves browser audio formats; Bulbul WAV output is served from the correct directory. Text remains readable if TTS fails.
+- Document OCR and structured extraction use the installed SDK, JSON Schema conversion, editable field review, explicit family creation and idempotent approval.
+- Source-based scheme eligibility, eligibility-filtered local TF-IDF vector ranking, application steps and local project filtering. Unavailable districts return no data rather than another district's projects.
+- Health referral information from an NHM ASHA source and a livelihood guide based on the existing MGNREGA snapshot. Neither provides diagnosis or guarantees official benefit approval.
+- PDF, text and JSON exports for the active household.
+- Offline app shell, public scheme snapshots and saved guides. Private profiles, conversations, scans, audio and exports are never service-worker cached. Location edits made while a profile is already loaded can be queued on-device and explicitly synced on reconnection.
+
+## Data and privacy
+
+`data/real` contains a small curated snapshot catalog, not a live nationwide government feed. Sources and snapshot dates are shown; most existing scheme records are dated March 2026. Adding a new location requires a reviewed source record. Rates, deadlines and complete eligibility must be checked with the responsible authority.
+
+Original uploaded scans are temporarily used for OCR and deleted after processing, including failed jobs. Extracted identifiers and conversation text are redacted; live personal chat/STT/TTS caches are disabled by default. Sarvam processes submitted documents/audio remotely. Demo family records remain clearly labelled; seeding is optional and can overwrite local demo data, so review the seed script before running it.
+
+Source metadata generation does not verify a source. `python scripts/scrape_sources.py --fetch` fetches configured public pages for manual review and records a content hash; it never silently replaces scheme rules or updates verification dates.
+
+## Verification
+
+```powershell
+python scripts/test_isolated.py
+python scripts/check_hardcoded.py
+cd frontend
+npm run build
+cd ..
+# Optional: uses configured Sarvam credit with synthetic data only
+python scripts/verify_live_repairs.py
 ```
 
-Mock outputs are clearly flagged with `[MOCK]` in logs and API responses. Never use mock outputs in a real demo.
+Use the isolated test runner: legacy test fixtures remove their own uploads directory. The runner copies the project into `.cache/test-runs` and never uses the working household database. Live checks likewise use a separate synthetic database and files.
 
----
-
-## Repository Structure
-
-```
-GRAAM-GYAAN/
-├── backend/
-│   ├── main.py              # FastAPI app
-│   ├── db.py                # SQLite schema (users, family_members, documents,
-│   │                        #   extracted_fields, conversations)
-│   ├── sarvam_client.py     # Sarvam AI wrapper (MOCK + cache)
-│   └── routers/             # API route modules (added per phase)
-├── frontend/                # React + Vite PWA (added Phase 4)
-├── data/
-│   └── real/
-│       ├── schemes/         # Welfare scheme YAMLs (source_url required)
-│       ├── projects/        # Government project data
-│       ├── guides/          # Health & livelihood guides (MoH/ASHA sourced)
-│       └── snapshots/       # Sample images/audio for smoke tests
-├── data/personas/           # Synthetic test households (NOT real data)
-├── scripts/
-│   └── smoke_sarvam.py      # Live smoke test — verifies all 4 Sarvam APIs
-├── .env.example
-├── pyproject.toml
-├── Project.md               # Full project specification
-└── README.md
-```
-
----
-
-## Sarvam AI Services
-
-| Service | Model | Endpoint | Purpose |
-|---|---|---|---|
-| **Saaras STT** | `saaras:v4` | `speech-to-text` | Transcribe villager voice |
-| **Bulbul TTS** | `bulbul:v4-flash` | `text-to-speech` | Read answers aloud |
-| **Sarvam Vision** | Vision 1.5 | `doc-ai/v1/job/extract` | Extract document fields |
-| **Chat** | `sarvam-105b` | `v1/chat/completions` | Conversational Q&A |
-
----
-
-## Database Schema
-
-| Table | Purpose |
-|---|---|
-| `users` | Household / village operator accounts (NO Aadhaar stored) |
-| `family_members` | Individual members with DOB, education, occupation |
-| `documents` | Uploaded documents with status tracking |
-| `extracted_fields` | Key-value fields from Sarvam Vision, with source spans |
-| `conversations` | Turn-by-turn voice/chat history |
-
----
-
-## Phases
-
-| Phase | Status | Scope |
-|---|---|---|
-| **Phase 0** | ✅ Complete | Repo, env, Sarvam client, DB schema, smoke test |
-| **Phase 1** | ⏳ Pending | Scheme loader, eligibility engine, family matcher |
-| **Phase 2** | ⏳ Pending | Document AI pipeline, review/approve UI |
-| **Phase 3** | ⏳ Pending | Voice assistant (STT → intent → TTS) |
-| **Phase 4** | ⏳ Pending | React PWA (mobile-first, Hindi default) |
-| **Phase 5** | ⏳ Pending | Health module (ASHA/MoH sourced rules only) |
-| **Phase 6** | ⏳ Pending | Suggestion engine (eligibility + embedding ranking) |
-| **Phase 7** | ⏳ Pending | Offline mode, service worker, sync queue |
-| **Phase 8** | ⏳ Pending | Demo script, DEMO.md |
-
----
-
-## Data Policy
-
-- `/data/real/` is the source of truth. **No AI-invented welfare content**.
-- Every YAML must include `source_url` and `verified_date`.
-- `/data/personas/` contains **synthetic test households only** — never real villager data.
-- **No Aadhaar numbers** stored anywhere. Consent screen before profile creation.
-
----
-
-## Contributing
-
-See [Project.md](Project.md) for the full specification and phase plan.
-
----
-
-*Built with ❤️ for rural India · Powered by [Sarvam AI](https://sarvam.ai)*
+See `docs/IMPLEMENTATION_STATUS.md` for scope and verification evidence.

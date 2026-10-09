@@ -9,10 +9,10 @@ verified_date: "2026-03-01"
 benefit: "Free secondary and tertiary healthcare hospitalization coverage of up to ₹5,00,000 per family per year across empaneled public and private hospitals."
 benefit_hi: "प्रति परिवार प्रति वर्ष ₹5,00,000 तक का निःशुल्क कैशलेस अस्पताल उपचार।"
 rules:
-  - field: "caste_category"
-    operator: "in"
-    value: ["sc", "st", "obc", "general_bpl"]
-    question_if_missing: "क्या आपका नाम SECC 2011 सूची या बीपीएल राशन कार्ड में है?"
+  - field: "official_eligibility_verified"
+    operator: "=="
+    value: true
+    question_if_missing: "Please check the official beneficiary list and complete eligibility with the responsible office. Caste alone does not establish eligibility."
 documents_required:
   - "Aadhaar Card"
   - "Ration Card (PHH / AAY)"
@@ -20,3 +20,6 @@ steps:
   - "Check family eligibility at nearest Community Health Centre (CHC) or CSC"
   - "Generate Ayushman Gold Card (e-Card) with biometric verification"
   - "Present Gold Card at any empaneled hospital for cashless treatment"
+
+# This snapshot contains only preliminary checks, not the complete official policy.
+rules_complete: false

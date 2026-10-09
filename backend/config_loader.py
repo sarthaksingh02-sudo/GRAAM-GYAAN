@@ -8,6 +8,7 @@ Everything is loaded from files in config/, backend/schemas/, prompts/, and data
 from __future__ import annotations
 
 import json
+import os
 import logging
 from pathlib import Path
 from typing import Any
@@ -65,7 +66,11 @@ def load_text(file_path: Path) -> str:
 # Config getters
 # ---------------------------------------------------------------------------
 def get_app_config() -> dict[str, Any]:
-    return load_yaml(CONFIG_DIR / "app.yaml")
+    config = load_yaml(CONFIG_DIR / "app.yaml")
+    if os.getenv("DATA_DIR"):
+        config["upload_dir"] = str(Path(os.environ["DATA_DIR"]) / "uploads")
+        config["audio_output_dir"] = str(Path(os.environ["DATA_DIR"]) / "uploads" / "audio")
+    return config
 
 
 def get_models_config() -> dict[str, Any]:

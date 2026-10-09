@@ -111,7 +111,7 @@ def get_export_data(user_id: int, lang: str = "hi-IN") -> dict[str, Any]:
             })
 
     # Regional projects
-    projects_data = get_all_projects()
+    projects_data = [p for p in get_all_projects() if all(str(p.get(k, "")).casefold() == str(h.get(k) or "").casefold() for k in ("district", "state"))]
     centre_projects = []
     state_projects = []
     proj_source = None

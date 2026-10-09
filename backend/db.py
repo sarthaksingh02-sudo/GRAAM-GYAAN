@@ -25,6 +25,14 @@ log = logging.getLogger(__name__)
 DB_PATH = Path(os.getenv("DATABASE_URL", "graam_gyaan.db").replace("sqlite:///./", ""))
 
 SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS pending_actions (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL,
+    action_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, session_id)
+);
+
 -- ===========================================================================
 -- users: household metadata and consent
 -- ===========================================================================
@@ -148,6 +156,7 @@ def init_db(db_path: Path | None = None) -> None:
     """Create all tables and run lightweight column migrations (idempotent)."""
     target = db_path or get_db_path()
     log.info("Initialising database at %s", target)
+    target.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(target)
     try:
         # Check and migrate columns if documents table already exists
@@ -165,6 +174,14 @@ def init_db(db_path: Path | None = None) -> None:
             conn.commit()
 
         conn.executescript(SCHEMA_SQL)
+        columns = {r[1] for r in conn.execute("PRAGMA table_info(conversations)")}
+        if "metadata_json" not in columns:
+            conn.execute("ALTER TABLE conversations ADD COLUMN metadata_json TEXT")
+        user_columns = {r[1] for r in conn.execute("PRAGMA table_info(users)")}
+        for name in ("device_key", "block", "tehsil", "village_code"):
+            if name not in user_columns:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {name} TEXT")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_device_key ON users(device_key)")
         conn.commit()
         log.info("Database ready.")
     finally:
@@ -174,6 +191,7 @@ def init_db(db_path: Path | None = None) -> None:
 def get_conn(db_path: Path | None = None) -> sqlite3.Connection:
     """Return a synchronous SQLite connection with Row factory."""
     target = db_path or get_db_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(target)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")

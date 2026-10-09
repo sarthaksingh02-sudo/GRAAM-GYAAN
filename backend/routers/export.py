@@ -7,6 +7,8 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from backend.active_user import get_active_user_id
+
 from fastapi import APIRouter, Header, HTTPException, Response, status
 from fastapi.responses import PlainTextResponse
 
@@ -26,7 +28,7 @@ def export_pdf(
     x_user_id: Optional[str] = Header(default=None),
 ):
     """Download citizen summary as a styled Devanagari PDF report."""
-    user_id = int(x_user_id) if x_user_id and x_user_id.isdigit() else 1
+    user_id = get_active_user_id(x_user_id)
     try:
         pdf_bytes = generate_pdf_export(user_id=user_id, lang=lang)
         return Response(
@@ -45,7 +47,7 @@ def export_text(
     x_user_id: Optional[str] = Header(default=None),
 ) -> str:
     """Get copyable plain text summary."""
-    user_id = int(x_user_id) if x_user_id and x_user_id.isdigit() else 1
+    user_id = get_active_user_id(x_user_id)
     try:
         return generate_text_export(user_id=user_id, lang=lang)
     except Exception as e:
@@ -59,7 +61,7 @@ def export_json(
     x_user_id: Optional[str] = Header(default=None),
 ) -> dict:
     """Get structured JSON export."""
-    user_id = int(x_user_id) if x_user_id and x_user_id.isdigit() else 1
+    user_id = get_active_user_id(x_user_id)
     try:
         return generate_json_export(user_id=user_id, lang=lang)
     except Exception as e:

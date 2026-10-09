@@ -125,6 +125,7 @@ def test_update_profile_confirmation_flow(client):
     resp1 = client.post(
         "/api/chat",
         json={
+            "sessionId": "profile-confirmation",
             "message": "मेरा गाँव बदलकर रामपुर कर दो",
             "lang": "hi-IN",
             "confirmAction": {"tool": "update_profile", "field": "village", "value": "Rampur"},
@@ -137,6 +138,7 @@ def test_update_profile_confirmation_flow(client):
     resp2 = client.post(
         "/api/chat",
         json={
+            "sessionId": "profile-confirmation",
             "message": "हाँ, अपडेट कर दो",
             "lang": "hi-IN",
             "confirmAction": {"tool": "update_profile", "field": "village", "value": "Rampur"},

@@ -99,11 +99,14 @@ def test_pwa_static_files(client):
     assert r_sw.status_code == 200
     assert "CACHE_NAME" in r_sw.text
 
-    r_css = client.get("/style.css")
-    assert r_css.status_code == 200
-
-    r_js = client.get("/app.js")
-    assert r_js.status_code == 200
+    import re
+    assets = re.findall(r'(?:src|href)="(/assets/[^"]+)"', r.text)
+    assert any(path.endswith('.js') for path in assets)
+    assert any(path.endswith('.css') for path in assets)
+    for path in assets:
+        assert client.get(path).status_code == 200
+    for size in (192,512):
+        assert client.get(f'/icon-{size}.png').status_code == 200
 
 
 def test_export_pdf_endpoint(client):

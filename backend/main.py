@@ -39,11 +39,32 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],
+    allow_origins=[x.strip() for x in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://127.0.0.1:8000").split(",") if x.strip()],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-User-Id"],
 )
+
+@app.middleware("http")
+async def household_session(request, call_next):
+    from backend.active_user import public_mode, device_key
+    import secrets, hashlib, re
+    if not public_mode():
+        return await call_next(request)
+    secret = request.cookies.get("gg_session", "")
+    fresh = not re.fullmatch(r"[a-f0-9]{64}", secret)
+    if fresh:
+        secret = secrets.token_hex(32)
+    token = device_key.set(hashlib.sha256(secret.encode()).hexdigest())
+    try:
+        response = await call_next(request)
+        if fresh:
+            response.set_cookie("gg_session", secret, max_age=60*60*24*90, httponly=True, secure=True, samesite="lax", path="/")
+        if request.url.path.startswith("/api/") and request.url.path not in {"/api/catalog/schemes", "/api/languages", "/api/intents", "/api/home-tiles"}:
+            response.headers["Cache-Control"] = "private, no-store"
+        return response
+    finally:
+        device_key.reset(token)
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -57,21 +78,28 @@ app.include_router(knowledge.router)
 app.include_router(export.router)
 
 # Mount frontend public directory
-frontend_dir = BASE_DIR / "frontend" / "public"
+frontend_dir = BASE_DIR / "frontend" / "dist"
+if not frontend_dir.exists():
+    frontend_dir = BASE_DIR / "frontend" / "public"
 if frontend_dir.exists():
+    if (frontend_dir / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(frontend_dir / "assets")), name="assets")
     app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
 
     @app.get("/")
+    @app.get("/index.html")
     async def serve_index():
-        return FileResponse(frontend_dir / "index.html")
+        if not (frontend_dir / "index.html").exists():
+            from fastapi.responses import HTMLResponse
+            return HTMLResponse("<h1>GRAAM-GYAAN</h1><p>Build the frontend: cd frontend &amp;&amp; npm install &amp;&amp; npm run build. Then restart the backend.</p>", status_code=503)
+        return FileResponse(frontend_dir / "index.html", headers={"Cache-Control": "no-cache"})
 
-    @app.get("/style.css")
-    async def serve_css():
-        return FileResponse(frontend_dir / "style.css")
-
-    @app.get("/app.js")
-    async def serve_js():
-        return FileResponse(frontend_dir / "app.js")
+    @app.get("/icon-{size}.png")
+    async def serve_icon(size: int):
+        from fastapi import HTTPException
+        if size not in (192, 512):
+            raise HTTPException(404)
+        return FileResponse(frontend_dir / f"icon-{size}.png")
 
     @app.get("/manifest.json")
     async def serve_manifest():
@@ -79,14 +107,20 @@ if frontend_dir.exists():
 
     @app.get("/sw.js")
     async def serve_sw():
-        return FileResponse(frontend_dir / "sw.js")
+        return FileResponse(frontend_dir / "sw.js", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/healthz")
 async def healthz() -> dict:
+    from backend.sarvam_client import SarvamClient
+    client = SarvamClient()
     return {
         "status": "ok",
-        "mock": os.getenv("SARVAM_MOCK", "false").lower() in ("1", "true"),
+        "ephemeralStorage": os.getenv("EPHEMERAL_STORAGE") == "true",
+        "mock": client.mock,
+        "mode": client.mode,
+        "aiConfigured": client.mode != "unconfigured",
+        "aiVerified": False,
         "service": "GRAAM-GYAAN Backend",
         "phase": 4,
     }

@@ -1,0 +1,30 @@
+# Free demo: SQLite and generated audio are ephemeral and may reset.
+services:
+  - type: web
+    name: graam-gyaan-api
+    runtime: python
+    plan: free
+    buildCommand: pip install .
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.2
+      - key: DEPLOYMENT_MODE
+        value: public
+      - key: DATABASE_URL
+        value: /tmp/graam-gyaan/graam_gyaan.db
+      - key: DATA_DIR
+        value: /tmp/graam-gyaan
+      - key: SARVAM_CACHE_DIR
+        value: /tmp/graam-gyaan/cache/sarvam
+      - key: SARVAM_MOCK
+        value: "false"
+      - key: EPHEMERAL_STORAGE
+        value: "true"
+      - key: DEBUG
+        value: "false"
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false

@@ -12,18 +12,22 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
 from backend.db import get_conn
+from backend.active_user import public_mode, device_key
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/consent", tags=["Consent"])
 
 
 class ConsentRequest(BaseModel):
+    block: Optional[str] = None
+    tehsil: Optional[str] = None
+    village_code: Optional[str] = None
     village: str = Field(default="Unknown", description="Village name")
     panchayat: Optional[str] = Field(default=None, description="Gram Panchayat name")
     district: Optional[str] = Field(default=None, description="District name")
     state: str = Field(default="Unknown", description="State name")
     language_pref: str = Field(default="hi-IN", description="Preferred language code")
-    consent: bool = Field(default=True, description="Consent flag")
+    consent: bool = Field(default=False, description="Consent flag")
 
 
 class ConsentResponse(BaseModel):
@@ -54,7 +58,10 @@ def record_consent(req: ConsentRequest) -> ConsentResponse:
     try:
         # Check if single default user exists or create new
         cur = conn.cursor()
-        cur.execute("SELECT id FROM users ORDER BY id ASC LIMIT 1")
+        if public_mode():
+            cur.execute("SELECT id FROM users WHERE device_key=?", (device_key.get(),))
+        else:
+            cur.execute("SELECT id FROM users ORDER BY id ASC LIMIT 1")
         row = cur.fetchone()
 
         if row:
@@ -78,6 +85,9 @@ def record_consent(req: ConsentRequest) -> ConsentResponse:
             )
             user_id = cur.lastrowid
 
+        if public_mode():
+            cur.execute("UPDATE users SET device_key=? WHERE id=?", (device_key.get(), user_id))
+        cur.execute("UPDATE users SET block=?, tehsil=?, village_code=? WHERE id=?", (req.block,req.tehsil,req.village_code,user_id))
         conn.commit()
 
         return ConsentResponse(

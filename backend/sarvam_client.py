@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.config_loader import get_mock_doc_result, get_models_config
-from backend.privacy import sanitize_extracted_dict
+from backend.privacy import sanitize_extracted_dict, redact_identifiers
 
 log = logging.getLogger(__name__)
 
@@ -87,23 +87,22 @@ class SarvamClient:
             log.warning("[SARVAM] MOCK mode active - responses loaded from mocks/.")
             self._sdk = None
         else:
-            if not self.api_key:
-                if not self.demo_cache:
-                    log.warning("SARVAM_API_KEY not set - falling back to MOCK mode.")
-                self.mock = True
-                self._sdk = None
-            else:
-                try:
-                    from sarvamai import SarvamAI  # type: ignore[import]
-                    self._sdk = SarvamAI(api_subscription_key=self.api_key)
-                    log.info("[SARVAM] Live mode enabled with key ending in ...%s", self.api_key[-4:])
-                except Exception as e:
-                    log.error("Failed to initialize SarvamAI SDK: %s. Falling back to MOCK mode.", e)
-                    self.mock = True
-                    self._sdk = None
+            self._sdk = None
+            if self.api_key:
+                from sarvamai import SarvamAI
+                self._sdk = SarvamAI(api_subscription_key=self.api_key, timeout=self.timeout)
+
+    @property
+    def mode(self) -> str:
+        return "demo" if self.demo_cache else "mock" if self.mock else "live" if self._sdk else "unconfigured"
+
+    def _require_live(self):
+        if self._sdk is None:
+            raise RuntimeError("Sarvam API key is not configured. Set SARVAM_API_KEY or explicitly enable SARVAM_MOCK.")
 
     def _retry_call(self, func, *args, **kwargs):
         """Execute a call with up to max_retries on transient failure."""
+        self._require_live()
         last_err = None
         for attempt in range(self.max_retries + 1):
             try:
@@ -124,7 +123,8 @@ class SarvamClient:
         self,
         messages: list[dict],
         model: str | None = None,
-        use_cache: bool = True,
+        use_cache: bool = False,
+        json_mode: bool = False,
     ) -> dict:
         model_id = model or self.cfg.get("chat_model")
         
@@ -154,7 +154,12 @@ class SarvamClient:
         t0 = time.monotonic()
 
         def _do_chat():
-            return self._sdk.chat.completions(model=model_id, messages=messages)
+            response = self._sdk.chat.completions(model=model_id, messages=messages, temperature=0.2,
+                                                  reasoning_effort="low", max_tokens=self.cfg.get("chat_max_tokens", 4096),
+                                                  **({"response_format": {"type": "json_object"}} if json_mode else {}))
+            if not response.choices or not response.choices[0].message.content:
+                raise RuntimeError("AI returned no answer within its output budget")
+            return response
 
         try:
             resp = self._retry_call(_do_chat)
@@ -190,7 +195,7 @@ class SarvamClient:
         model: str | None = None,
         mode: str = "transcribe",
         language_code: str = "hi-IN",
-        use_cache: bool = True,
+        use_cache: bool = False,
     ) -> dict:
         model_id = model or self.cfg.get("stt_model")
 
@@ -210,7 +215,7 @@ class SarvamClient:
         if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-        ck = _cache_key("stt", {"file": audio_path.name, "model": model_id, "mode": mode})
+        ck = _cache_key("stt", {"sha256": hashlib.sha256(audio_path.read_bytes()).hexdigest(), "model": model_id, "mode": mode, "language": language_code})
         if use_cache and (cached := _cache_load(ck)):
             return cached
 
@@ -222,6 +227,7 @@ class SarvamClient:
                     file=f,
                     model=model_id,
                     mode=mode,
+                    language_code=language_code,
                 )
 
         try:
@@ -252,7 +258,7 @@ class SarvamClient:
         language_code: str = "hi-IN",
         model: str | None = None,
         speaker: str | None = None,
-        use_cache: bool = True,
+        use_cache: bool = False,
     ) -> dict:
         model_id = model or self.cfg.get("tts_model")
         speaker_id = speaker or self.cfg.get("tts_default_speaker")
@@ -265,7 +271,7 @@ class SarvamClient:
         if self.mock:
             return {
                 "mock": True,
-                "audio_b64": base64.b64encode(b"RIFF$MOCK_WAV_BYTES").decode(),
+                "audio_b64": _mock_audio(),
                 "note": "[MOCK] Mock audio output",
             }
 
@@ -281,13 +287,14 @@ class SarvamClient:
                 language_code=language_code,
                 model=model_id,
                 speaker=speaker_id,
+                output_audio_codec="wav",
             )
 
         try:
             audio_resp = self._retry_call(_do_tts)
             elapsed = time.monotonic() - t0
             audios = getattr(audio_resp, "audios", None) or []
-            audio_b64 = "".join(audios) if audios else ""
+            audio_b64 = audios[0] if len(audios) == 1 else _join_wav(audios) if audios else ""
             result = {
                 "mock": False,
                 "audio_b64": audio_b64,
@@ -359,7 +366,7 @@ class SarvamClient:
                 "mock": True,
                 "job_id": f"mock-digitise-job-{fn[:8]}",
                 "status": "completed",
-                "text": mock_text,
+                "text": redact_identifiers(mock_text),
             }
 
         file_path = Path(file_path)
@@ -370,7 +377,7 @@ class SarvamClient:
 
         def _start_job():
             with file_path.open("rb") as f:
-                mime = "application/pdf" if file_path.suffix.lower() == ".pdf" else "image/png"
+                mime = "application/pdf" if file_path.suffix.lower() == ".pdf" else "image/jpeg" if file_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
                 return self._sdk.doc_ai.digitise(
                     file=[(file_path.name, f, mime)],
                     language=language,
@@ -392,12 +399,16 @@ class SarvamClient:
                 time.sleep(poll_interval)
 
             if status in ("completed", "partially_completed"):
-                dl = self._sdk.doc_ai.get_download_url(job_id=job_id)
+                raw = self._sdk.doc_ai.get_results(job_id=job_id)
+                raw = raw.model_dump() if hasattr(raw, "model_dump") else raw
+                text = _ocr_text(raw)
+                if not text.strip():
+                    raise ValueError("Document OCR returned no readable text")
                 return {
                     "mock": False,
                     "job_id": job_id,
                     "status": status,
-                    "download_url": getattr(dl, "url", None),
+                    "text": redact_identifiers(text),
                     "latency_s": round(time.monotonic() - t0, 2),
                 }
 
@@ -465,10 +476,10 @@ class SarvamClient:
 
         def _start_extract():
             with file_path.open("rb") as f:
-                mime = "application/pdf" if file_path.suffix.lower() == ".pdf" else "image/png"
+                mime = "application/pdf" if file_path.suffix.lower() == ".pdf" else "image/jpeg" if file_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
                 return self._sdk.doc_ai.extract(
                     file=[(file_path.name, f, mime)],
-                    schema=json.dumps(schema),
+                    schema=json.dumps(_extract_schema(schema)),
                     language=language,
                     output_format=fmt,
                 )
@@ -524,3 +535,52 @@ class SarvamClient:
                     if demo_rat:
                         return demo_rat
             raise e
+
+
+def _mock_audio():
+    import io, wave
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(16000)
+        wav.writeframes(b"\0\0" * 1600)
+    return base64.b64encode(buffer.getvalue()).decode()
+
+
+def _join_wav(chunks):
+    import io, wave
+    output = io.BytesIO()
+    with wave.open(output, "wb") as dest:
+        for i, chunk in enumerate(chunks):
+            with wave.open(io.BytesIO(base64.b64decode(chunk)), "rb") as source:
+                if i == 0:
+                    dest.setparams(source.getparams())
+                dest.writeframes(source.readframes(source.getnframes()))
+    return base64.b64encode(output.getvalue()).decode()
+
+
+def _extract_schema(schema):
+    if schema.get("type") == "object" and schema.get("properties"):
+        return schema
+    def field_type(field):
+        kind = field.get("type", "string")
+        if kind not in {"string", "number", "integer", "boolean", "array", "object"}:
+            kind = "string"
+        result = {"type": kind, "description": field.get("description") or field.get("label") or field.get("key") or field.get("name", "Field")}
+        if kind == "array":
+            items = field.get("items", [])
+            result["items"] = {"type": "object", "properties": {item["name"]: field_type(item) for item in items}} if isinstance(items, list) and items else {"type": "string"}
+        return result
+    return {"type": "object", "properties": {f["key"]: field_type(f) for f in schema.get("fields", [])}}
+
+
+def _ocr_text(value):
+    if isinstance(value, dict):
+        for key in ("markdown", "text", "content", "md"):
+            if isinstance(value.get(key), str):
+                return value[key]
+        return "\n".join(_ocr_text(v) for v in value.values() if isinstance(v, (list, dict)))
+    if isinstance(value, list):
+        return "\n".join(_ocr_text(v) for v in value)
+    return ""

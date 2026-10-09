@@ -29,14 +29,15 @@ from PIL import Image
 from pydantic import BaseModel, Field
 import pypdf
 
-from backend.config_loader import get_app_config
+from backend.config_loader import get_app_config, get_doc_schema
 from backend.db import get_conn
+from backend.active_user import get_active_user_id
 from backend.document_processor import (
     calculate_missing_documents,
     compute_age_years,
     process_document_job,
 )
-from backend.privacy import mask_value_by_type
+from backend.privacy import mask_value_by_type, redact_identifiers, sanitize_extracted_dict
 from backend.sarvam_client import SarvamClient
 
 log = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ class DocumentJobResponse(BaseModel):
     noticeDetails: Optional[NoticeDetails] = None
     error: Optional[str] = None
     isMock: bool = False
+    mode: str = "live"
 
 
 class ConfirmField(BaseModel):
@@ -84,25 +86,7 @@ class ConfirmRequest(BaseModel):
     fields: List[ConfirmField] = Field(default_factory=list)
 
 
-def _get_active_user_id(x_user_id: Optional[str] = None) -> int:
-    """Helper to verify consent and return user_id."""
-    conn = get_conn()
-    try:
-        cur = conn.cursor()
-        if x_user_id and x_user_id.isdigit():
-            cur.execute("SELECT id, consent_given FROM users WHERE id = ?", (int(x_user_id),))
-        else:
-            cur.execute("SELECT id, consent_given FROM users ORDER BY id ASC LIMIT 1")
-        row = cur.fetchone()
-
-        if not row or not row["consent_given"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={"error": "CONSENT_REQUIRED", "message": "User consent is required before document upload."},
-            )
-        return row["id"]
-    finally:
-        conn.close()
+_get_active_user_id = get_active_user_id
 
 
 def _run_job_in_background(job_id: str, user_id: int, file_path: Path, lang: str, original_filename: str | None = None):
@@ -129,6 +113,7 @@ def _run_job_in_background(job_id: str, user_id: int, file_path: Path, lang: str
             original_filename=original_filename,
         )
 
+        result = redact_identifiers(result)
         now_iso = datetime.now(timezone.utc).isoformat()
         cur.execute(
             """
@@ -160,6 +145,7 @@ def _run_job_in_background(job_id: str, user_id: int, file_path: Path, lang: str
         conn.commit()
     finally:
         conn.close()
+        file_path.unlink(missing_ok=True)
 
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
@@ -191,7 +177,7 @@ async def upload_document(
             },
         )
 
-    content = await file.read()
+    content = await file.read(10 * 1024 * 1024 + 1)
     max_bytes = app_cfg.get("max_upload_bytes", 10485760)
     if len(content) > max_bytes:
         raise HTTPException(
@@ -271,10 +257,11 @@ async def upload_document(
 @router.get("/{job_id}", response_model=DocumentJobResponse)
 def get_document_job(job_id: str, x_user_id: Optional[str] = Header(default=None)) -> DocumentJobResponse:
     """Poll the status of a document extraction job."""
+    user_id = _get_active_user_id(x_user_id)
     conn = get_conn()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM document_jobs WHERE job_id = ?", (job_id,))
+        cur.execute("SELECT * FROM document_jobs WHERE job_id = ? AND user_id = ?", (job_id, user_id))
         row = cur.fetchone()
         if not row:
             raise HTTPException(
@@ -321,6 +308,7 @@ def get_document_job(job_id: str, x_user_id: Optional[str] = Header(default=None
             extractedFields=fields,
             noticeDetails=notice,
             isMock=data.get("isMock", False),
+            mode=data.get("mode", "live"),
         )
     finally:
         conn.close()
@@ -340,7 +328,7 @@ def confirm_document(
     conn = get_conn()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM document_jobs WHERE job_id = ?", (job_id,))
+        cur.execute("SELECT * FROM document_jobs WHERE job_id = ? AND user_id = ?", (job_id, user_id))
         job_row = cur.fetchone()
         if not job_row:
             raise HTTPException(
@@ -348,6 +336,18 @@ def confirm_document(
                 detail={"error": "JOB_NOT_FOUND", "message": f"Job {job_id} not found."},
             )
 
+        if job_row["status"] != "ready":
+            raise HTTPException(409, "Document is not ready for approval")
+        existing = cur.execute("SELECT id FROM documents WHERE job_id = ? AND user_id = ?", (job_id, user_id)).fetchone()
+        if existing:
+            return {"success": True, "documentId": existing["id"], "alreadyConfirmed": True}
+        if req.memberId and not cur.execute("SELECT id FROM family_members WHERE id = ? AND user_id = ?", (req.memberId, user_id)).fetchone():
+            raise HTTPException(404, "Family member not found")
+        result = json.loads(job_row["result_json"] or "{}")
+        if not req.fields:
+            req.fields = [ConfirmField(key=f["key"], value=f.get("value")) for f in result.get("extractedFields", [])]
+        if result.get("noticeDetails"):
+            req.fields = [ConfirmField(key=k, value=v) for k, v in result["noticeDetails"].items() if k not in {"audioUrl", "audioAvailable"}]
         doc_type = job_row["doc_type"] or "other"
         category = job_row["category"] or "id_benefit"
         now_iso = datetime.now(timezone.utc).isoformat()
@@ -364,16 +364,18 @@ def confirm_document(
 
         # 2. Insert extracted fields (masked)
         fields_dict: dict[str, Any] = {}
+        schema_fields = get_doc_schema(doc_type).get("fields", [])
         for f in req.fields:
+            f.value = redact_identifiers(sanitize_extracted_dict({f.key: f.value}, schema_fields)[f.key])
             fields_dict[f.key] = f.value
             # Mask if identifier
-            masked_val = mask_value_by_type(str(f.value) if f.value is not None else None)
+            masked_val = mask_value_by_type(f.value)
             cur.execute(
                 """
                 INSERT INTO extracted_fields (document_id, field_name, field_label, field_value, confidence, is_masked, is_mock)
-                VALUES (?, ?, ?, ?, 1.0, 1, 0)
+                VALUES (?, ?, ?, ?, 1.0, 1, ?)
                 """,
-                (doc_id, f.key, f.key, str(masked_val) if masked_val is not None else None),
+                (doc_id, f.key, f.key, json.dumps(masked_val, ensure_ascii=False) if isinstance(masked_val, (list, dict)) else str(masked_val) if masked_val is not None else None, int(bool(result.get("isMock")))),
             )
 
         # 3. Handle family members update/creation
@@ -399,7 +401,7 @@ def confirm_document(
                         created_members.append({"id": new_id, "name": m_name, "relation": m_rel})
 
         # Update target family member if specified or if self/head
-        if not target_member_id:
+        if not target_member_id and category == "id_benefit":
             # Check if there is an existing member matching name or default 'self'
             cur.execute("SELECT id FROM family_members WHERE user_id = ? AND relation = 'self' LIMIT 1", (user_id,))
             self_row = cur.fetchone()
@@ -478,7 +480,9 @@ def stream_audio(filename: str):
     """Serve generated Bulbul TTS WAV audio file."""
     app_cfg = get_app_config()
     audio_dir = BASE_DIR / app_cfg.get("audio_output_dir", "uploads/audio")
-    audio_path = audio_dir / filename
+    audio_path = (audio_dir / filename).resolve()
+    if audio_path.parent != audio_dir.resolve():
+        raise HTTPException(404, "Audio file not found")
     if not audio_path.exists():
         raise HTTPException(status_code=404, detail="Audio file not found")
     return FileResponse(audio_path, media_type="audio/wav")

@@ -12,6 +12,7 @@ Endpoints:
 from __future__ import annotations
 
 import io
+import json
 import logging
 import os
 import uuid
@@ -24,7 +25,10 @@ from pydantic import BaseModel, Field
 from backend.assistant import execute_assistant_turn, get_user_profile_data
 from backend.config_loader import get_intents_config, get_languages_config
 from backend.db import get_conn
+from backend.active_user import get_active_user_id
 from backend.sarvam_client import SarvamClient
+from starlette.concurrency import run_in_threadpool
+from backend.config_loader import get_app_config
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["Voice Conversation"])
@@ -33,9 +37,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class ChatRequest(BaseModel):
     sessionId: Optional[str] = None
-    message: str
+    message: str = Field(min_length=1, max_length=4000)
     lang: str = "hi-IN"
     confirmAction: Optional[dict[str, Any]] = None
+    includeAudio: bool = True
 
 
 class SourceItem(BaseModel):
@@ -53,6 +58,8 @@ class ChatResponse(BaseModel):
     requiresConfirmation: bool = False
     pendingAction: Optional[dict[str, Any]] = None
     isMock: bool = False
+    mode: str = "live"
+    audioError: Optional[str] = None
 
 
 class VoiceResponse(BaseModel):
@@ -60,24 +67,7 @@ class VoiceResponse(BaseModel):
     assistant: ChatResponse
 
 
-def _get_active_user_id(x_user_id: Optional[str] = None) -> int:
-    conn = get_conn()
-    try:
-        cur = conn.cursor()
-        if x_user_id and x_user_id.isdigit():
-            cur.execute("SELECT id, consent_given FROM users WHERE id = ?", (int(x_user_id),))
-        else:
-            cur.execute("SELECT id, consent_given FROM users ORDER BY id ASC LIMIT 1")
-        row = cur.fetchone()
-        if not row:
-            # Create default guest user if needed or raise
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={"error": "CONSENT_REQUIRED", "message": "Consent is required before conversing."},
-            )
-        return row["id"]
-    finally:
-        conn.close()
+_get_active_user_id = get_active_user_id
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -92,6 +82,7 @@ def chat_turn(req: ChatRequest, x_user_id: Optional[str] = Header(default=None))
         user_text=req.message,
         lang=req.lang,
         confirm_action=req.confirmAction,
+        include_audio=req.includeAudio,
     )
 
     sources = [
@@ -112,6 +103,8 @@ def chat_turn(req: ChatRequest, x_user_id: Optional[str] = Header(default=None))
         requiresConfirmation=res.get("requiresConfirmation", False),
         pendingAction=res.get("pendingAction"),
         isMock=res.get("isMock", False),
+        mode=res.get("mode", "live"),
+        audioError=res.get("audioError"),
     )
 
 
@@ -130,23 +123,34 @@ async def voice_turn(
     session_id = sessionId or f"sess-{uuid.uuid4().hex[:10]}"
 
     # Save incoming audio file
-    audio_bytes = await file.read()
-    temp_dir = BASE_DIR / "uploads" / "audio_in"
+    audio_bytes = await file.read(10 * 1024 * 1024 + 1)
+    if not audio_bytes or len(audio_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(400, "Audio must be non-empty and under 10 MB")
+    ext = Path(file.filename or "recording.webm").suffix.lower()
+    if ext not in {".wav", ".webm", ".mp4", ".m4a", ".ogg", ".mp3"}:
+        raise HTTPException(400, "Unsupported audio format")
+    temp_dir = BASE_DIR / get_app_config().get("upload_dir", "uploads") / "audio_in"
     temp_dir.mkdir(parents=True, exist_ok=True)
-    incoming_audio_path = temp_dir / f"{session_id}_{uuid.uuid4().hex[:6]}.wav"
+    incoming_audio_path = temp_dir / f"{uuid.uuid4().hex}{ext}"
     incoming_audio_path.write_bytes(audio_bytes)
 
     client = SarvamClient()
 
     # Step 1: Transcribe via Saaras STT
-    stt_res = client.transcribe(incoming_audio_path, language_code=lang)
-    transcript = stt_res.get("transcript", "").strip()
+    try:
+        stt_res = await run_in_threadpool(client.transcribe, incoming_audio_path, language_code=lang)
+    except Exception:
+        raise HTTPException(503, "Speech recognition failed. Please retry or type your question.")
+    finally:
+        incoming_audio_path.unlink(missing_ok=True)
+    from backend.privacy import redact_identifiers
+    transcript = redact_identifiers(stt_res.get("transcript", "").strip())
 
     if not transcript:
-        transcript = "नमस्ते"
+        raise HTTPException(422, "No speech detected. Please speak again.")
 
     # Step 2: Assistant turn
-    res = execute_assistant_turn(
+    res = await run_in_threadpool(execute_assistant_turn,
         user_id=user_id,
         session_id=session_id,
         user_text=transcript,
@@ -172,6 +176,8 @@ async def voice_turn(
         requiresConfirmation=res.get("requiresConfirmation", False),
         pendingAction=res.get("pendingAction"),
         isMock=res.get("isMock", False),
+        mode=res.get("mode", "live"),
+        audioError=res.get("audioError"),
     )
 
     return VoiceResponse(
@@ -181,19 +187,20 @@ async def voice_turn(
 
 
 @router.get("/conversations/{session_id}")
-def get_conversation_history(session_id: str) -> dict:
+def get_conversation_history(session_id: str, x_user_id: Optional[str] = Header(default=None)) -> dict:
+    user_id = get_active_user_id(x_user_id)
     """Fetch transcript history for a session."""
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT id, turn, role, content_text, audio_path, language, is_mock, created_at
+            SELECT id, turn, role, content_text, audio_path, language, is_mock, created_at, metadata_json
             FROM conversations
-            WHERE session_id = ?
+            WHERE session_id = ? AND user_id = ?
             ORDER BY turn ASC
             """,
-            (session_id,),
+            (session_id, user_id),
         )
         rows = cur.fetchall()
 
@@ -207,6 +214,7 @@ def get_conversation_history(session_id: str) -> dict:
                 "language": r["language"],
                 "isMock": bool(r["is_mock"]),
                 "createdAt": r["created_at"],
+                **json.loads(r["metadata_json"] or "{}"),
             }
             for r in rows
         ]
@@ -235,3 +243,35 @@ def get_intents(lang: str = "hi-IN") -> dict:
 def get_languages() -> dict:
     """Return supported language catalog from config/languages.yaml."""
     return get_languages_config()
+
+
+class SpeechRequest(BaseModel):
+    sessionId: str
+    text: str = Field(min_length=1, max_length=20000)
+    lang: str = "hi-IN"
+
+@router.post("/speech")
+def speech(req: SpeechRequest, x_user_id: Optional[str] = Header(default=None)):
+    import base64
+    user_id = _get_active_user_id(x_user_id)
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT id FROM conversations WHERE user_id=? AND session_id=? AND role='assistant' AND content_text=? ORDER BY id DESC LIMIT 1", (user_id,req.sessionId,req.text)).fetchone()
+        if not row:
+            raise HTTPException(404, "Saved answer not found")
+        try:
+            audio = SarvamClient().synthesize(req.text, language_code=req.lang)
+            if not audio.get("audio_b64"):
+                raise ValueError("Empty audio")
+        except Exception:
+            raise HTTPException(503,"Speech is unavailable. Your text answer is still saved.")
+        directory = BASE_DIR / get_app_config().get("audio_output_dir", "uploads/audio")
+        directory.mkdir(parents=True,exist_ok=True)
+        name = f"conv_{uuid.uuid4().hex}.wav"
+        (directory/name).write_bytes(base64.b64decode(audio["audio_b64"]))
+        url = f"/api/documents/audio/{name}"
+        conn.execute("UPDATE conversations SET audio_path=? WHERE id=?", (url,row["id"]))
+        conn.commit()
+        return {"audioUrl": url}
+    finally:
+        conn.close()

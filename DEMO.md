@@ -1,3 +1,5 @@
+> Updated integration note (9 October 2026): build the React frontend with `cd frontend && npm ci && npm run build` before starting FastAPI. Live `.env` settings are loaded automatically. Use `python scripts/test_isolated.py` for tests. Mock/demo modes are explicitly labelled; no-key configurations no longer fall back to mock. Project and benefit examples below refer to historical snapshots, not current verification. The microphone button toggles recording (maximum 30 seconds). Source facts and the actual selected household determine live responses; they are not guaranteed to match this scripted demonstration. See `docs/IMPLEMENTATION_STATUS.md`.
+
 # 🌾 GRAAM-GYAAN (ग्राम-ज्ञान) — Official Demo Walkthrough (DEMO.md)
 
 This document provides a click-by-click demonstration guide for **GRAAM-GYAAN**, an offline-ready, voice-enabled rural welfare assistant built for Indian citizens.
@@ -118,7 +120,7 @@ Run the complete test suite and demo runner verification:
 
 ```bash
 # 1. Run all 23 unit tests
-python -m pytest -v
+python scripts/test_isolated.py
 
 # 2. Run no-hardcoding validator
 python scripts/check_hardcoded.py

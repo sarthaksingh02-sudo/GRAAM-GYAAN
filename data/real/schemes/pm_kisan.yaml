@@ -25,3 +25,6 @@ steps:
   - "Verify land record seeding at Panchayat Bhawan or CSC"
   - "Complete biometric or OTP-based e-KYC on pmkisan.gov.in"
   - "Ensure bank account is Aadhaar seeded for DBT payments"
+
+# This snapshot contains only preliminary checks, not the complete official policy.
+rules_complete: false

@@ -37,7 +37,7 @@ from backend.config_loader import (
 )
 from backend.db import get_conn
 from backend.document_processor import calculate_missing_documents, compute_age_years
-from backend.privacy import mask_value_by_type
+from backend.privacy import mask_value_by_type, redact_identifiers
 from backend.sarvam_client import SarvamClient
 
 log = logging.getLogger(__name__)
@@ -73,6 +73,7 @@ def get_user_profile_data(user_id: int) -> dict[str, Any]:
                 "gender": m["gender"],
                 "relation": m["relation"],
                 "occupation": m["occupation"],
+                "education_level": m["education_level"],
                 "caste_category": m["caste_category"],
                 "is_disabled": bool(m["is_disabled"]),
                 "land_acres": m["land_acres"],
@@ -85,6 +86,7 @@ def get_user_profile_data(user_id: int) -> dict[str, Any]:
                 "id": u["id"],
                 "village": u["village"],
                 "panchayat": u["panchayat"],
+                **{k: u[k] for k in ("block", "tehsil", "village_code")},
                 "district": u["district"],
                 "state": u["state"],
                 "language_pref": u["language_pref"],
@@ -157,6 +159,10 @@ def tool_update_profile(
     lang: str = "hi-IN",
 ) -> dict[str, Any]:
     """Tool: update_profile with spoken read-back and confirmation gate."""
+    allowed = {"name", "dob", "gender", "occupation", "education_level", "relation"} if member_name else {"village", "panchayat", "district", "state", "language_pref"}
+    if field not in allowed or not isinstance(value, str) or not value.strip() or len(value) > 200:
+        return {"text": "Invalid profile field or value.", "sources": []}
+    value = redact_identifiers(value)
     target_desc = f"{member_name} का {field}" if member_name else field
 
     if not confirmed:
@@ -191,6 +197,8 @@ def tool_update_profile(
                 f"UPDATE users SET {field} = ?, updated_at = ? WHERE id = ?",
                 (value, now_iso, user_id),
             )
+        if cur.rowcount == 0:
+            return {"text": "No matching family member was found. Please check the name.", "sources": []}
         conn.commit()
 
         success_msg = get_i18n_message("CONFIRMED_SUCCESS", lang)
@@ -260,7 +268,14 @@ def tool_find_schemes(user_id: int, query: str | None = None, lang: str = "hi-IN
     scored_schemes.sort(key=lambda x: x[0], reverse=True)
     matched = [s for score, s in scored_schemes if score > 0]
     if not matched:
-        matched = [s for _, s in scored_schemes[:2]]
+        if not q or any(w in q for w in ["scheme", "योजना"]):
+            matched = schemes
+        else:
+            return {"text": get_i18n_message("INFO_NOT_AVAILABLE", lang), "sources": []}
+    from backend.eligibility_engine import evaluate_scheme_eligibility
+    profile = get_user_profile_data(user_id)
+    evaluations = {s["id"]: evaluate_scheme_eligibility(s, profile) for s in matched}
+    matched.sort(key=lambda s: {"ELIGIBLE": 0, "POSSIBLE": 1, "NOT_ELIGIBLE": 2}[evaluations[s["id"]]["status"]])
 
     sources = [
         {"name": m.get("name", "Scheme"), "url": m.get("source_url"), "verified_date": m.get("verified_date")}
@@ -282,6 +297,10 @@ def tool_find_schemes(user_id: int, query: str | None = None, lang: str = "hi-IN
             second_name = matched[1].get("name")
             spoken += f" You can also explore '{second_name}'."
 
+    evaluation = evaluations[top["id"]]
+    spoken += (" पात्रता: " if lang.startswith("hi") else " Eligibility: ") + evaluation["status"]
+    if evaluation.get("missingFields"):
+        spoken += ". " + " ".join(item.get("question", "") for item in evaluation["missingFields"][:2])
     return {
         "text": spoken,
         "sources": sources,
@@ -302,7 +321,11 @@ def tool_get_regional_projects(user_id: int, lang: str = "hi-IN") -> dict[str, A
             "missing_file": "data/real/projects/varanasi_rural_projects.yaml",
         }
 
-    p_file = projects_data[0]
+    state = prof.get("household", {}).get("state", "")
+    p_file = next((p for p in projects_data if str(p.get("district", "")).casefold() == str(dist or "").casefold()
+                   and str(p.get("state", "")).casefold() == str(state or "").casefold()), None)
+    if not p_file:
+        return {"text": get_i18n_message("INFO_NOT_AVAILABLE", lang), "sources": []}
     p_dict = p_file.get("projects", {})
     centre_list = p_dict.get("centre", [])
     state_list = p_dict.get("state", [])
@@ -449,6 +472,7 @@ def execute_assistant_turn(
     lang: str = "hi-IN",
     client: SarvamClient | None = None,
     confirm_action: dict | None = None,
+    include_audio: bool = True,
 ) -> dict[str, Any]:
     """
     Main assistant orchestration:
@@ -459,32 +483,58 @@ def execute_assistant_turn(
       - Saves turn in SQLite conversations table
     """
     client = client or SarvamClient()
+    user_text = redact_identifiers(user_text)
     user_text_clean = user_text.strip()
     user_text_lower = user_text_clean.lower()
 
-    # 1. Handle confirmation flow
-    if confirm_action and confirm_action.get("tool") == "update_profile":
-        is_confirmed = False
-        if any(w in user_text_lower for w in ["हाँ", "हां", "yes", "theek hai", "sahi", "confirm", "कर दो"]):
-            is_confirmed = True
-        elif any(w in user_text_lower for w in ["नहीं", "रद्द", "no", "cancel", "mat karo"]):
-            return {
-                "sessionId": session_id,
-                "text": get_i18n_message("CANCELLED", lang),
-                "audioUrl": None,
-                "sources": [],
-                "requiresConfirmation": False,
-            }
+    # Pending changes belong to this household/session and expire after 15 minutes.
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT action_json FROM pending_actions WHERE user_id=? AND session_id=? AND created_at > datetime('now', '-15 minutes')", (user_id, session_id)).fetchone()
+        stored_action = json.loads(row["action_json"]) if row else None
+    finally:
+        conn.close()
+    if stored_action and confirm_action and any(confirm_action.get(k) != v for k, v in stored_action.items()):
+        from fastapi import HTTPException
+        raise HTTPException(409, "The proposed change was modified. Please request it again.")
+    action = stored_action or confirm_action
+    if action and action.get("tool") == "update_profile":
+        negative = any(w in user_text_lower for w in ["नहीं", "रद्द", "cancel", "mat karo"]) or bool(re.search(r"\b(no|not|don't)\b", user_text_lower))
+        affirmative = any(w in user_text_lower for w in ["हाँ", "हां", "theek hai", "sahi", "कर दो"]) or bool(re.search(r"\b(yes|confirm)\b", user_text_lower))
+        if negative or (stored_action and affirmative):
+            conn = get_conn()
+            try:
+                conn.execute("DELETE FROM pending_actions WHERE user_id=? AND session_id=?", (user_id, session_id))
+                conn.commit()
+            finally:
+                conn.close()
+        if negative:
+            return _finalize_turn(user_id, session_id, user_text, {"text": get_i18n_message("CANCELLED", lang), "sources": []}, lang, client, include_audio)
+        tool_res = tool_update_profile(user_id, action.get("field", ""), action.get("value"),
+                                       action.get("member_name"), bool(stored_action and affirmative), lang)
+        return _finalize_turn(user_id, session_id, user_text, tool_res, lang, client, include_audio)
 
-        tool_res = tool_update_profile(
-            user_id=user_id,
-            field=confirm_action.get("field", ""),
-            value=confirm_action.get("value"),
-            member_name=confirm_action.get("member_name"),
-            confirmed=is_confirmed,
-            lang=lang,
-        )
-        return _finalize_turn(user_id, session_id, user_text, tool_res, lang, client)
+    # Live answers use grounded records and this household's conversation history.
+    if not client.mock and not client.demo_cache:
+        from backend.conversation import grounded_answer
+        try:
+            tool_res = grounded_answer(user_id, session_id, user_text, lang, client)
+        except Exception:
+            log.exception("Live assistant failed")
+            if any(w in user_text_lower for w in ("scheme", "योजना", "kisan", "mgnrega", "pension")):
+                tool_res = tool_find_schemes(user_id, query=user_text_clean, lang=lang)
+            elif any(w in user_text_lower for w in ("project", "road", "area", "विकास", "सड़क")):
+                tool_res = tool_get_regional_projects(user_id, lang=lang)
+            else:
+                tool_res = {"text": "कृपया प्रश्न फिर भेजें, या योजनाएँ और क्षेत्रीय स्रोत खोलें।" if lang.startswith("hi") else "Please retry your question, or open Schemes and Official regional updates to browse the available sources.", "sources": []}
+            prefix = "AI से अभी संपर्क नहीं हो पाया। नीचे सहेजे गए स्रोतों से जानकारी है; यह नया AI उत्तर नहीं है। " if lang.startswith("hi") else "The AI service could not complete this answer. The information below comes from saved sources; this is a limited fallback. "
+            tool_res["text"] = prefix + tool_res["text"]
+            tool_res["mode"] = "fallback"
+        return _finalize_turn(user_id, session_id, user_text, tool_res, lang, client, include_audio)
+
+    if user_text_lower in ("hi", "hello", "नमस्ते", "नमस्कार"):
+        text = "नमस्ते! योजनाओं, परिवार, दस्तावेज़ या अपने क्षेत्र के काम के बारे में पूछें।" if lang.startswith("hi") else "Hello! Ask me about schemes, family documents, or local projects."
+        return _finalize_turn(user_id, session_id, user_text, {"text": text, "sources": []}, lang, client, include_audio)
 
     # 2. Check intent matching from config/intents.yaml
     intents = get_intents_config()
@@ -529,9 +579,9 @@ def execute_assistant_turn(
             tool_res = tool_explain_document(user_id, lang=lang)
         else:
             # General grounded answer
-            tool_res = tool_find_schemes(user_id, query=user_text_clean, lang=lang)
+            tool_res = {"text": get_i18n_message("INFO_NOT_AVAILABLE", lang), "sources": []}
 
-    return _finalize_turn(user_id, session_id, user_text, tool_res, lang, client)
+    return _finalize_turn(user_id, session_id, user_text, tool_res, lang, client, include_audio)
 
 
 def _finalize_turn(
@@ -541,20 +591,31 @@ def _finalize_turn(
     tool_res: dict[str, Any],
     lang: str,
     client: SarvamClient,
+    include_audio: bool = True,
 ) -> dict[str, Any]:
     """Generate audio, save conversation turns, and build response payload."""
-    spoken_text = tool_res.get("text", "")
+    spoken_text = redact_identifiers(tool_res.get("text", ""))
     sources = tool_res.get("sources", [])
     requires_confirmation = tool_res.get("requiresConfirmation", False)
     pending_action = tool_res.get("pendingAction")
 
+    if requires_confirmation and pending_action:
+        conn = get_conn()
+        try:
+            conn.execute("INSERT OR REPLACE INTO pending_actions(user_id,session_id,action_json) VALUES(?,?,?)",
+                         (user_id, session_id, json.dumps(pending_action)))
+            conn.commit()
+        finally:
+            conn.close()
+
     # Generate Bulbul TTS Audio
     audio_url = None
     audio_available = False
+    audio_error = None
     try:
-        tts_res = client.synthesize(spoken_text, language_code=lang)
+        tts_res = client.synthesize(spoken_text, language_code=lang) if include_audio else {}
         if tts_res.get("audio_b64"):
-            conv_dir = BASE_DIR / "uploads" / "conversations"
+            conv_dir = BASE_DIR / get_app_config().get("audio_output_dir", "uploads/audio")
             conv_dir.mkdir(parents=True, exist_ok=True)
             import uuid
             audio_fn = f"conv_{uuid.uuid4().hex[:10]}.wav"
@@ -564,7 +625,8 @@ def _finalize_turn(
             audio_url = f"/api/documents/audio/{audio_fn}"
             audio_available = True
     except Exception as e:
-        log.warning("Assistant TTS synthesis error: %s", e)
+        audio_error = "Audio could not be generated. You can still read the answer."
+        log.warning("Assistant TTS synthesis error: %s", type(e).__name__)
 
     # Record in SQLite conversations table
     conn = get_conn()
@@ -587,10 +649,10 @@ def _finalize_turn(
         # Assistant turn
         cur.execute(
             """
-            INSERT INTO conversations (user_id, session_id, turn, role, content_text, audio_path, language, is_mock, created_at)
-            VALUES (?, ?, ?, 'assistant', ?, ?, ?, ?, ?)
+            INSERT INTO conversations (user_id, session_id, turn, role, content_text, audio_path, language, is_mock, created_at, metadata_json)
+            VALUES (?, ?, ?, 'assistant', ?, ?, ?, ?, ?, ?)
             """,
-            (user_id, session_id, next_turn + 1, spoken_text, audio_url, lang, 1 if client.mock else 0, now_iso),
+            (user_id, session_id, next_turn + 1, spoken_text, audio_url, lang, 1 if client.mock else 0, now_iso, json.dumps({"sources": sources, "mode": tool_res.get("mode", client.mode), "audioError": audio_error}, default=str)),
         )
         conn.commit()
     finally:
@@ -605,4 +667,6 @@ def _finalize_turn(
         "requiresConfirmation": requires_confirmation,
         "pendingAction": pending_action,
         "isMock": client.mock,
+        "mode": tool_res.get("mode", client.mode),
+        "audioError": audio_error,
     }

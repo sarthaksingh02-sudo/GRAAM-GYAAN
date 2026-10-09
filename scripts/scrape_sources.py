@@ -37,7 +37,7 @@ def load_sources_config() -> list[dict]:
         return []
 
 
-def create_snapshot_for_source(src: dict, dry_run: bool = False) -> Path | None:
+def create_snapshot_for_source(src: dict, dry_run: bool = False, fetch: bool = False) -> Path | None:
     src_id = src.get("id", "source")
     source_url = src.get("url", "")
     target_file = src.get("target_file", "")
@@ -55,7 +55,7 @@ def create_snapshot_for_source(src: dict, dry_run: bool = False) -> Path | None:
         "snapshot_date": now_date,
         "category": src.get("category"),
         "target_file": target_file,
-        "status": "verified_active",
+        "status": "configured_not_verified",
         "selectors": src.get("selectors", {}),
     }
 
@@ -63,6 +63,16 @@ def create_snapshot_for_source(src: dict, dry_run: bool = False) -> Path | None:
         log.info("[DRY-RUN] Would create snapshot at %s for %s (%s)", snapshot_path.name, src_id, source_url)
         return snapshot_path
 
+    if fetch:
+        import httpx
+        import hashlib
+        response = httpx.get(source_url, timeout=30, follow_redirects=True)
+        response.raise_for_status()
+        payload["status"] = "fetched_requires_review"
+        payload["http_status"] = response.status_code
+        payload["content_sha256"] = hashlib.sha256(response.content).hexdigest()
+        payload["content"] = response.text
+        # Fetching a webpage never verifies the rules or changes their verification date.
     SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     snapshot_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     log.info("Created snapshot: %s -> %s", src_id, snapshot_path.name)
@@ -73,6 +83,7 @@ def main():
     parser = argparse.ArgumentParser(description="GRAAM-GYAAN Official Sources Scraper & Snapshot Generator")
     parser.add_argument("--source", type=str, help="Specific source ID to snapshot")
     parser.add_argument("--dry-run", action="store_true", help="Perform dry run without writing files")
+    parser.add_argument("--fetch", action="store_true", help="Fetch source pages for manual review; never automatically verify scheme rules")
     args = parser.parse_args()
 
     sources = load_sources_config()
@@ -84,7 +95,7 @@ def main():
     for src in sources:
         if args.source and src.get("id") != args.source:
             continue
-        create_snapshot_for_source(src, dry_run=args.dry_run)
+        create_snapshot_for_source(src, dry_run=args.dry_run, fetch=args.fetch)
         count += 1
 
     log.info("Finished processing %d snapshot(s).", count)
