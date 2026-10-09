@@ -1,0 +1,14 @@
+{
+  "source_id": "ayushman_portal",
+  "name": "National Health Authority - PM-JAY",
+  "source_url": "https://nha.gov.in",
+  "verified_date": "2026-03-01",
+  "snapshot_date": "2026-10-09",
+  "category": "schemes",
+  "target_file": "data/real/schemes/ayushman_bharat.yaml",
+  "status": "verified_active",
+  "selectors": {
+    "coverage": ".coverage-amount",
+    "hospital_list": ".empanelled-hospitals"
+  }
+}

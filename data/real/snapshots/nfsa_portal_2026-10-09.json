@@ -1,0 +1,13 @@
+{
+  "source_id": "nfsa_portal",
+  "name": "National Food Security Portal",
+  "source_url": "https://nfsa.gov.in",
+  "verified_date": "2026-03-01",
+  "snapshot_date": "2026-10-09",
+  "category": "guides",
+  "target_file": "data/real/guides/ration_guide.yaml",
+  "status": "verified_active",
+  "selectors": {
+    "ration_rules": ".rules-section"
+  }
+}

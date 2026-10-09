@@ -1,0 +1,13 @@
+{
+  "source_id": "uidai_portal",
+  "name": "Unique Identification Authority of India (UIDAI)",
+  "source_url": "https://uidai.gov.in",
+  "verified_date": "2026-03-01",
+  "snapshot_date": "2026-10-09",
+  "category": "guides",
+  "target_file": "data/real/guides/aadhaar_pan_guide.yaml",
+  "status": "verified_active",
+  "selectors": {
+    "services": ".service-item"
+  }
+}

@@ -1,0 +1,14 @@
+# data/real/guides/family_guide.yaml
+topic: "family"
+title: "Family Certificates & Vital Documentation Guide"
+title_hi: "पारिवारिक प्रमाण पत्र (जाति, आय, निवास, जन्म) मार्गदर्शिका"
+source_url: "https://edistrict.up.gov.in"
+verified_date: "2026-03-01"
+
+steps:
+  - id: "income_caste_domicile"
+    title_hi: "आय, जाति एवं निवास प्रमाण पत्र कैसे बनवाएं?"
+    description_hi: "ई-डिस्ट्रिक्ट पोर्टल या सीएससी केंद्र पर स्व-प्रमाणित घोषणा पत्र, आधार कार्ड और राशन कार्ड देकर आवेदन करें। 7 से 15 कार्यदिवसों में लेखपाल रिपोर्ट के बाद प्रमाण पत्र जारी होता है।"
+  - id: "birth_registration"
+    title_hi: "जन्म प्रमाण पत्र पंजीकरण"
+    description_hi: "जन्म के 21 दिनों के भीतर ग्राम पंचायत सचिवालय (ग्राम विकास अधिकारी) या स्वास्थ्य केंद्र में जन्म प्रमाण पत्र का निःशुल्क पंजीकरण कराएं।"

@@ -1,0 +1,14 @@
+# data/real/guides/new_schemes_guide.yaml
+topic: "new_schemes"
+title: "Newly Launched Rural Welfare Schemes & Digital Services Guide"
+title_hi: "नवीनतम ग्रामीण कल्याण योजनाएं एवं डिजिटल सेवा मार्गदर्शिका"
+source_url: "https://myscheme.gov.in"
+verified_date: "2026-03-01"
+
+steps:
+  - id: "myscheme_portal"
+    title_hi: "माई स्कीम (myScheme) पोर्टल पर पात्रता कैसे देखें?"
+    description_hi: "myscheme.gov.in पर आयु, लिंग, राज्य एवं व्यवसाय दर्ज करके 100+ केंद्रीय एवं राज्य योजनाओं में सीधी पात्रता एक क्लिक में जांचें।"
+  - id: "csc_application"
+    title_hi: "सीएससी (CSC) से ऑनलाइन आवेदन कैसे करें?"
+    description_hi: "गाँव के कॉमन सर्विस सेंटर पर जाकर आवश्यक दस्तावेज़ जमा करें और रसीद / एप्लीकेशन ट्रैकिंग नंबर अवश्य प्राप्त करें।"

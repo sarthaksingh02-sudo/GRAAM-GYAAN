@@ -1,0 +1,90 @@
+# config/sources.yaml
+# Official government portal scrape targets and data sources for GRAAM-GYAAN
+# No URL literals in application code; all endpoints are loaded from this configuration.
+
+sources:
+  - id: "pm_kisan_portal"
+    name: "PM-KISAN Official Portal"
+    url: "https://pmkisan.gov.in"
+    category: "schemes"
+    target_file: "data/real/schemes/pm_kisan.yaml"
+    verified_date: "2026-03-01"
+    refresh_frequency_days: 30
+    selectors:
+      scheme_title: "h1, .scheme-title"
+      benefit_summary: ".benefit-text, #scheme-overview"
+      eligibility_rules: ".eligibility-criteria ul li"
+
+  - id: "pmay_g_portal"
+    name: "PMAY-Gramin Dashboard"
+    url: "https://pmayg.nic.in"
+    category: "schemes"
+    target_file: "data/real/schemes/pmay_g.yaml"
+    verified_date: "2026-03-01"
+    refresh_frequency_days: 30
+    selectors:
+      assistance_amount: ".amount-highlight"
+      criteria: ".guideline-list li"
+
+  - id: "sukanya_portal"
+    name: "National Savings Institute - Sukanya Samriddhi"
+    url: "https://www.nsiindia.gov.in"
+    category: "schemes"
+    target_file: "data/real/schemes/sukanya_samriddhi.yaml"
+    verified_date: "2026-03-01"
+    refresh_frequency_days: 30
+    selectors:
+      interest_rate: ".rate-badge"
+      eligibility_age: ".eligibility-rules"
+
+  - id: "ayushman_portal"
+    name: "National Health Authority - PM-JAY"
+    url: "https://nha.gov.in"
+    category: "schemes"
+    target_file: "data/real/schemes/ayushman_bharat.yaml"
+    verified_date: "2026-03-01"
+    refresh_frequency_days: 30
+    selectors:
+      coverage: ".coverage-amount"
+      hospital_list: ".empanelled-hospitals"
+
+  - id: "varanasi_district_portal"
+    name: "Varanasi District Administration Projects"
+    url: "https://varanasi.nic.in"
+    category: "projects"
+    target_file: "data/real/projects/varanasi_rural_projects.yaml"
+    verified_date: "2026-03-01"
+    refresh_frequency_days: 15
+    selectors:
+      projects_list: ".project-card"
+      agency: ".executing-agency"
+
+  - id: "dbt_bharat_portal"
+    name: "DBT Bharat - Direct Benefit Transfer"
+    url: "https://dbtbharat.gov.in"
+    category: "guides"
+    target_file: "data/real/guides/banking_guide.yaml"
+    verified_date: "2026-03-01"
+    refresh_frequency_days: 30
+    selectors:
+      dbt_faq: ".faq-container"
+
+  - id: "nfsa_portal"
+    name: "National Food Security Portal"
+    url: "https://nfsa.gov.in"
+    category: "guides"
+    target_file: "data/real/guides/ration_guide.yaml"
+    verified_date: "2026-03-01"
+    refresh_frequency_days: 30
+    selectors:
+      ration_rules: ".rules-section"
+
+  - id: "uidai_portal"
+    name: "Unique Identification Authority of India (UIDAI)"
+    url: "https://uidai.gov.in"
+    category: "guides"
+    target_file: "data/real/guides/aadhaar_pan_guide.yaml"
+    verified_date: "2026-03-01"
+    refresh_frequency_days: 30
+    selectors:
+      services: ".service-item"

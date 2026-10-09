@@ -216,38 +216,51 @@ def tool_find_schemes(user_id: int, query: str | None = None, lang: str = "hi-IN
             "missing_file": "data/real/schemes/*.yaml",
         }
 
-    prof = get_user_profile_data(user_id)
-    members = prof.get("familyMembers", [])
-
-    matched = []
     q = (query or "").lower().strip()
+    scored_schemes = []
 
     for s in schemes:
-        s_id = s.get("id", "")
-        s_name = s.get("name_hi" if lang.startswith("hi") else "name", s.get("name", ""))
+        score = 0
+        s_id = s.get("id", "").lower()
+        s_name = (s.get("name_hi", "") + " " + s.get("name", "")).lower()
         s_cat = s.get("category", "").lower()
         s_target = s.get("target_group", "").lower()
+        s_benefit = (s.get("benefit_hi", "") + " " + s.get("benefit", "")).lower()
 
-        # Check keyword relevance
-        is_relevant = False
-        if not q or q in s_id or q in s_name.lower() or q in s_cat or q in s_target:
-            is_relevant = True
-        elif "farmer" in q or "kisan" in q or "खेती" in q:
-            if s_cat == "agriculture":
-                is_relevant = True
-        elif "daughter" in q or "beti" in q or "बेटी" in q or "girl" in q:
-            if "daughter" in s_cat or "girl" in s_cat:
-                is_relevant = True
-        elif "house" in q or "awas" in q or "आवास" in q or "makan" in q:
-            if s_cat == "housing":
-                is_relevant = True
+        # Keyword mapping
+        if any(w in q for w in ["किसान", "kisan", "farmer", "खेती", "कृषि", "fasal"]):
+            if s_cat == "agriculture" or "kisan" in s_id:
+                score += 10
+        if any(w in q for w in ["बेटी", "लड़की", "daughter", "girl", "sukanya", "कन्या"]):
+            if "daughter" in s_cat or "girl" in s_cat or "sukanya" in s_id:
+                score += 10
+        if any(w in q for w in ["आवास", "घर", "मकान", "house", "housing", "awas"]):
+            if s_cat == "housing" or "pmay" in s_id:
+                score += 10
+        if any(w in q for w in ["स्वास्थ्य", "इलाज", "अस्पताल", "health", "ayushman", "दवा"]):
+            if s_cat == "health" or "ayushman" in s_id:
+                score += 10
+        if any(w in q for w in ["रोजगार", "मनरेगा", "मजदूरी", "nrega", "mgnrega", "काम"]):
+            if s_cat == "social_security" or "mgnrega" in s_id:
+                score += 10
 
-        if is_relevant:
-            matched.append(s)
+        # Substring / token matches
+        for word in q.split():
+            if len(word) >= 3:
+                if word in s_name:
+                    score += 5
+                if word in s_id:
+                    score += 5
+                if word in s_target or word in s_benefit:
+                    score += 2
 
+        scored_schemes.append((score, s))
+
+    # Sort by score descending
+    scored_schemes.sort(key=lambda x: x[0], reverse=True)
+    matched = [s for score, s in scored_schemes if score > 0]
     if not matched:
-        # Fallback to all available
-        matched = schemes[:2]
+        matched = [s for _, s in scored_schemes[:2]]
 
     sources = [
         {"name": m.get("name", "Scheme"), "url": m.get("source_url"), "verified_date": m.get("verified_date")}

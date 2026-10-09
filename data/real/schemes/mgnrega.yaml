@@ -1,0 +1,23 @@
+# data/real/schemes/mgnrega.yaml
+id: "mgnrega"
+name: "Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA)"
+name_hi: "महात्मा गांधी राष्ट्रीय ग्रामीण रोजगार गारंटी अधिनियम (मनरेगा)"
+category: "social_security"
+target_group: "Adult members of rural households willing to do unskilled manual work"
+source_url: "https://nrega.nic.in"
+verified_date: "2026-03-01"
+benefit: "Guaranteed 100 days of wage employment in a financial year for every rural household with direct wage payment to bank account."
+benefit_hi: "प्रत्येक ग्रामीण परिवार को प्रति वित्तीय वर्ष कम से कम 100 दिनों के अकुशल रोजगार की कानूनी गारंटी।"
+rules:
+  - field: "ageYears"
+    operator: ">="
+    value: 18
+    question_if_missing: "क्या आवेदक की आयु 18 वर्ष या उससे अधिक है?"
+documents_required:
+  - "Aadhaar Card"
+  - "Bank Passbook"
+  - "Passport size photograph"
+steps:
+  - "Apply to Gram Panchayat for Job Card"
+  - "Gram Panchayat issues Job Card within 15 days of application"
+  - "Submit written demand for work at Gram Panchayat Bhawan"

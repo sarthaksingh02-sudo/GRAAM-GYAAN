@@ -1,0 +1,15 @@
+{
+  "source_id": "pm_kisan_portal",
+  "name": "PM-KISAN Official Portal",
+  "source_url": "https://pmkisan.gov.in",
+  "verified_date": "2026-03-01",
+  "snapshot_date": "2026-10-09",
+  "category": "schemes",
+  "target_file": "data/real/schemes/pm_kisan.yaml",
+  "status": "verified_active",
+  "selectors": {
+    "scheme_title": "h1, .scheme-title",
+    "benefit_summary": ".benefit-text, #scheme-overview",
+    "eligibility_rules": ".eligibility-criteria ul li"
+  }
+}

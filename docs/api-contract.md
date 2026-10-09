@@ -324,7 +324,116 @@ Returns supported languages, STT codes, and TTS voice names from `config/languag
 
 ---
 
-## 5. Audio Playback
+## 5. Knowledge Layer Endpoints (Phase 3)
+
+### `GET /api/schemes`
+Returns all welfare schemes with deterministic eligibility evaluation (`ELIGIBLE`, `POSSIBLE`, `NOT_ELIGIBLE`) calculated dynamically against the user's profile.
+
+**Query Parameters:**
+- `category`: Optional sector filter (e.g. `agriculture`, `housing`, `health`)
+- `lang`: Target language (default `hi-IN`)
+
+**Response (200 OK):**
+```json
+{
+  "count": 5,
+  "schemes": [
+    {
+      "id": "pm_kisan",
+      "name": "प्रधानमंत्री किसान सम्मान निधि",
+      "category": "agriculture",
+      "sector": {
+        "name": "कृषि एवं किसान कल्याण",
+        "icon": "Wheat",
+        "color": "#2E7D32"
+      },
+      "benefit": "प्रति वर्ष ₹6,000 तीन समान किस्तों में सीधे आधार-सीडेड बैंक खाते में।",
+      "targetGroup": "Small and marginal farmers",
+      "sourceUrl": "https://pmkisan.gov.in",
+      "verifiedDate": "2026-03-01",
+      "eligibility": {
+        "schemeId": "pm_kisan",
+        "status": "ELIGIBLE",
+        "reasons": ["Matched occupation: farmer", "Matched land_acres: 2.5 (> 0)"],
+        "missingFields": [],
+        "matchedMember": {
+          "id": 1,
+          "name": "Ramesh Kumar",
+          "relation": "self"
+        }
+      },
+      "documentsRequired": ["Aadhaar Card", "Bank Passbook", "Land Record"],
+      "steps": ["Complete e-KYC on pmkisan.gov.in", "Verify land record seeding"]
+    }
+  ],
+  "missing_data": false
+}
+```
+
+---
+
+### `GET /api/schemes/:schemeId`
+Retrieves detailed information for a single scheme.
+
+---
+
+### `GET /api/projects`
+Returns ongoing and completed regional development projects separated by **Centre** and **State** sponsorship.
+
+**Response (200 OK):**
+```json
+{
+  "district": "Varanasi",
+  "stateName": "Uttar Pradesh",
+  "sourceUrl": "https://varanasi.nic.in",
+  "verifiedDate": "2026-03-01",
+  "centre": [
+    {
+      "id": "jjm_varanasi_tap",
+      "name": "जल जीवन मिशन - हर घर नल से जल",
+      "agency": "Ministry of Jal Shakti, GoI",
+      "status": "ongoing",
+      "completionTarget": "December 2026",
+      "description": "वाराणसी जिले के प्रत्येक ग्रामीण परिवार को स्वच्छ पेयजल का नल कनेक्शन।"
+    }
+  ],
+  "state": [
+    {
+      "id": "up_rural_solar_light",
+      "name": "मुख्यमंत्री सौर स्ट्रीट लाइट योजना",
+      "agency": "UPNEDA, Govt of Uttar Pradesh",
+      "status": "ongoing",
+      "completionTarget": "August 2026",
+      "description": "रामपुर ग्राम पंचायत में 15 सोलर एलईडी स्ट्रीट लाइट की स्थापना।"
+    }
+  ],
+  "missing_data": false
+}
+```
+
+---
+
+### `GET /api/guides`
+Lists all 5 need-guides as icon cards with source URLs and verified dates.
+
+---
+
+### `GET /api/guides/:topic`
+Returns step-by-step guidance for a specific guide topic (`banking`, `aadhaar_pan`, `ration`, `new_schemes`, `family`) with synthesized Bulbul TTS voice audio.
+
+---
+
+### `GET /api/home-tiles`
+Returns home screen navigation tiles with localized label strings from `config/home_tiles.yaml`.
+
+---
+
+### `GET /api/missing-documents`
+Returns per-member missing documents checklist across the entire household.
+
+---
+
+## 6. Audio Playback
 
 ### `GET /api/documents/audio/:filename`
-Streams the generated Bulbul TTS WAV audio file.
+Streams generated Bulbul TTS WAV audio files.

@@ -1,0 +1,69 @@
+# config/home_tiles.yaml
+# Home screen icon tiles configuration
+
+tiles:
+  - id: "talk"
+    icon: "Mic"
+    label_key: "TILE_TALK"
+    route: "/voice"
+    color: "#D32F2F"
+    badge: "voice"
+
+  - id: "scan_document"
+    icon: "Camera"
+    label_key: "TILE_SCAN_DOC"
+    route: "/documents/upload"
+    color: "#1976D2"
+
+  - id: "my_family"
+    icon: "Users"
+    label_key: "TILE_MY_FAMILY"
+    route: "/family"
+    color: "#388E3C"
+
+  - id: "schemes"
+    icon: "Award"
+    label_key: "TILE_SCHEMES"
+    route: "/schemes"
+    color: "#F57C00"
+
+  - id: "projects"
+    icon: "MapPin"
+    label_key: "TILE_PROJECTS"
+    route: "/projects"
+    color: "#7B1FA2"
+
+  - id: "guide_banking"
+    icon: "Landmark"
+    label_key: "TILE_BANKING"
+    route: "/guides/banking"
+    guide_topic: "banking"
+    color: "#00796B"
+
+  - id: "guide_aadhaar_pan"
+    icon: "CreditCard"
+    label_key: "TILE_AADHAAR_PAN"
+    route: "/guides/aadhaar_pan"
+    guide_topic: "aadhaar_pan"
+    color: "#512DA8"
+
+  - id: "guide_ration"
+    icon: "ShoppingBag"
+    label_key: "TILE_RATION"
+    route: "/guides/ration"
+    guide_topic: "ration"
+    color: "#C2185B"
+
+  - id: "guide_new_schemes"
+    icon: "Sparkles"
+    label_key: "TILE_NEW_SCHEMES"
+    route: "/guides/new_schemes"
+    guide_topic: "new_schemes"
+    color: "#E64A19"
+
+  - id: "guide_family"
+    icon: "FileText"
+    label_key: "TILE_FAMILY_GUIDE"
+    route: "/guides/family"
+    guide_topic: "family"
+    color: "#455A64"

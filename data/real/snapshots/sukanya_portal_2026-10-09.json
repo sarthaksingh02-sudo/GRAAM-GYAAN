@@ -1,0 +1,14 @@
+{
+  "source_id": "sukanya_portal",
+  "name": "National Savings Institute - Sukanya Samriddhi",
+  "source_url": "https://www.nsiindia.gov.in",
+  "verified_date": "2026-03-01",
+  "snapshot_date": "2026-10-09",
+  "category": "schemes",
+  "target_file": "data/real/schemes/sukanya_samriddhi.yaml",
+  "status": "verified_active",
+  "selectors": {
+    "interest_rate": ".rate-badge",
+    "eligibility_age": ".eligibility-rules"
+  }
+}

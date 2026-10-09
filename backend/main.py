@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.db import init_db
-from backend.routers import consent, documents, family, voice
+from backend.routers import consent, documents, family, knowledge, voice
 
 logging.basicConfig(
     level=logging.DEBUG if os.getenv("DEBUG", "false").lower() == "true" else logging.INFO,
@@ -30,8 +30,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="GRAAM-GYAAN API",
-    description="AI-powered rural welfare assistant — Phase 2 Voice Conversation API",
-    version="0.2.0",
+    description="AI-powered rural welfare assistant — Phase 3 Knowledge Layer API",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -48,6 +48,7 @@ app.include_router(consent.router)
 app.include_router(documents.router)
 app.include_router(family.router)
 app.include_router(voice.router)
+app.include_router(knowledge.router)
 
 
 @app.get("/healthz")

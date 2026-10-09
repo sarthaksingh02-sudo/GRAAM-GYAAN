@@ -46,3 +46,43 @@ messages:
   DEFAULT_GREETING:
     hi-IN: "नमस्ते! मैं ग्राम-ज्ञान हूँ। आप मुझसे सरकारी योजनाओं, गाँव के प्रोजेक्ट या अपने दस्तावेज़ों के बारे में पूछ सकते हैं।"
     en-IN: "Hello! I am GRAAM-GYAAN. You can ask me about government welfare schemes, local projects, or your documents."
+
+  TILE_TALK:
+    hi-IN: "बोलकर पूछें (Voice)"
+    en-IN: "Talk to Assistant"
+
+  TILE_SCAN_DOC:
+    hi-IN: "दस्तावेज़ स्कैन करें"
+    en-IN: "Scan Document"
+
+  TILE_MY_FAMILY:
+    hi-IN: "मेरा परिवार"
+    en-IN: "My Family"
+
+  TILE_SCHEMES:
+    hi-IN: "सरकारी योजनाएं"
+    en-IN: "Govt Schemes"
+
+  TILE_PROJECTS:
+    hi-IN: "मेरे क्षेत्र में विकास कार्य"
+    en-IN: "Projects in My Area"
+
+  TILE_BANKING:
+    hi-IN: "बैंकिंग एवं डीबीटी"
+    en-IN: "Banking & DBT"
+
+  TILE_AADHAAR_PAN:
+    hi-IN: "आधार एवं पैन कार्ड"
+    en-IN: "Aadhaar & PAN"
+
+  TILE_RATION:
+    hi-IN: "राशन कार्ड एवं ई-केवाईसी"
+    en-IN: "Ration & e-KYC"
+
+  TILE_NEW_SCHEMES:
+    hi-IN: "नवीनतम योजनाएं"
+    en-IN: "New Schemes"
+
+  TILE_FAMILY_GUIDE:
+    hi-IN: "पारिवारिक प्रमाण पत्र"
+    en-IN: "Family Documents"

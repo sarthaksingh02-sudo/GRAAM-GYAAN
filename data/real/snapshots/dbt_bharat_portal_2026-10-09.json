@@ -1,0 +1,13 @@
+{
+  "source_id": "dbt_bharat_portal",
+  "name": "DBT Bharat - Direct Benefit Transfer",
+  "source_url": "https://dbtbharat.gov.in",
+  "verified_date": "2026-03-01",
+  "snapshot_date": "2026-10-09",
+  "category": "guides",
+  "target_file": "data/real/guides/banking_guide.yaml",
+  "status": "verified_active",
+  "selectors": {
+    "dbt_faq": ".faq-container"
+  }
+}

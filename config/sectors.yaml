@@ -1,0 +1,59 @@
+# config/sectors.yaml
+# Government project and welfare scheme sector definitions, icons, and labels
+
+sectors:
+  agriculture:
+    id: "agriculture"
+    name: "Agriculture & Farming"
+    name_hi: "कृषि एवं किसान कल्याण"
+    icon: "Wheat"
+    color: "#2E7D32" # Green
+
+  housing:
+    id: "housing"
+    name: "Rural Housing"
+    name_hi: "ग्रामीण आवास"
+    icon: "Home"
+    color: "#E65100" # Orange
+
+  water_sanitation:
+    id: "water_sanitation"
+    name: "Water & Sanitation"
+    name_hi: "जल एवं स्वच्छता"
+    icon: "Droplet"
+    color: "#0277BD" # Blue
+
+  infrastructure:
+    id: "infrastructure"
+    name: "Roads & Infrastructure"
+    name_hi: "सड़क एवं ग्रामीण विकास"
+    icon: "Truck"
+    color: "#4E342E" # Brown
+
+  energy:
+    id: "energy"
+    name: "Solar & Energy"
+    name_hi: "सौर ऊर्जा एवं बिजली"
+    icon: "Sun"
+    color: "#F9A825" # Yellow/Amber
+
+  health:
+    id: "health"
+    name: "Health & Nutrition"
+    name_hi: "स्वास्थ्य एवं पोषण"
+    icon: "Heart"
+    color: "#C2185B" # Pink/Red
+
+  education_girl_child:
+    id: "education_girl_child"
+    name: "Girl Child & Education"
+    name_hi: "बालिका एवं शिक्षा"
+    icon: "GraduationCap"
+    color: "#6A1B9A" # Purple
+
+  social_security:
+    id: "social_security"
+    name: "Social Security & Pension"
+    name_hi: "सामाजिक सुरक्षा एवं पेंशन"
+    icon: "Shield"
+    color: "#37474F" # Slate
