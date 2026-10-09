@@ -1,0 +1,23 @@
+# data/real/schemes/pmay_g.yaml
+id: "pmay_g"
+name: "Pradhan Mantri Awaas Yojana - Gramin"
+name_hi: "प्रधानमंत्री आवास योजना - ग्रामीण"
+category: "housing"
+target_group: "Houseless or kutcha house rural households"
+source_url: "https://pmayg.nic.in"
+verified_date: "2026-03-01"
+benefit: "Financial assistance of ₹1,20,000 in plain areas (₹1,30,000 in hilly/difficult areas) + 90 days MGNREGA wages for pucca house construction."
+benefit_hi: "पक्के मकान के निर्माण हेतु ₹1,20,000 की सीधी सहायता एवं 90 दिन की मनरेगा मजदूरी।"
+rules:
+  - field: "caste_category"
+    operator: "in"
+    value: ["sc", "st", "obc", "general_bpl"]
+documents_required:
+  - "Aadhaar Card"
+  - "Bank Account linked with Aadhaar"
+  - "Job Card number (MGNREGA)"
+  - "Swachh Bharat Mission (SBM) toilet registration"
+steps:
+  - "Verification through Gram Sabha SECC list"
+  - "Geo-tagging of existing kutcha structure via AwaasApp"
+  - "First installment disbursed directly to bank account"

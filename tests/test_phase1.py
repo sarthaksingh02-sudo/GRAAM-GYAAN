@@ -29,7 +29,9 @@ from backend.privacy import mask_aadhaar, mask_last4, mask_pan, sanitize_extract
 
 @pytest.fixture(autouse=True)
 def setup_teardown_db():
-    test_db = Path("test_graam_gyaan.db")
+    db_file = "test_graam_gyaan_p1.db"
+    os.environ["DATABASE_URL"] = db_file
+    test_db = Path(db_file)
     if test_db.exists():
         test_db.unlink()
     init_db(test_db)

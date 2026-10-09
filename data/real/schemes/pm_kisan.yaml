@@ -1,0 +1,27 @@
+# data/real/schemes/pm_kisan.yaml
+id: "pm_kisan"
+name: "PM Kisan Samman Nidhi"
+name_hi: "प्रधानमंत्री किसान सम्मान निधि"
+category: "agriculture"
+target_group: "Small and marginal farmers"
+source_url: "https://pmkisan.gov.in"
+verified_date: "2026-03-01"
+benefit: "₹6,000 per year paid in three equal installments of ₹2,000 directly into Aadhaar-linked bank account (DBT)."
+benefit_hi: "प्रति वर्ष ₹6,000 तीन समान किस्तों (₹2,000 प्रत्येक) में सीधे आधार-सीडेड बैंक खाते में।"
+rules:
+  - field: "occupation"
+    operator: "in"
+    value: ["farmer", "agriculture", "cultivator"]
+    question_if_missing: "क्या आप या आपके परिवार का कोई सदस्य खेती करता है?"
+  - field: "land_acres"
+    operator: ">"
+    value: 0
+    question_if_missing: "आपके पास कुल कितने एकड़ कृषि भूमि है?"
+documents_required:
+  - "Aadhaar Card"
+  - "Bank Passbook (Aadhaar Seeded)"
+  - "Land Record / Khasra-Khatauni"
+steps:
+  - "Verify land record seeding at Panchayat Bhawan or CSC"
+  - "Complete biometric or OTP-based e-KYC on pmkisan.gov.in"
+  - "Ensure bank account is Aadhaar seeded for DBT payments"

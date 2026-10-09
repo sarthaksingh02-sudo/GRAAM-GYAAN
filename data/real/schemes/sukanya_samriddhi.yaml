@@ -1,0 +1,26 @@
+# data/real/schemes/sukanya_samriddhi.yaml
+id: "sukanya_samriddhi"
+name: "Sukanya Samriddhi Yojana (SSY)"
+name_hi: "सुकन्या समृद्धि योजना"
+category: "girl_child_education"
+target_group: "Parents of girl children aged 10 years or below"
+source_url: "https://www.nsiindia.gov.in"
+verified_date: "2026-03-01"
+benefit: "High-interest savings account (currently 8.2% p.a.) with full tax exemption for daughter's higher education and marriage."
+benefit_hi: "बेटी की उच्च शिक्षा और विवाह हेतु 8.2% वार्षिक ब्याज दर के साथ बचत खाता।"
+rules:
+  - field: "gender"
+    operator: "=="
+    value: "female"
+  - field: "ageYears"
+    operator: "<="
+    value: 10
+    question_if_missing: "बेटी की आयु कितनी है?"
+documents_required:
+  - "Birth Certificate of girl child"
+  - "Aadhaar Card of Parent/Guardian"
+  - "Photograph of Daughter and Parent"
+steps:
+  - "Visit nearest Post Office or authorized commercial bank branch"
+  - "Fill Form SSA-1 with minimum deposit of ₹250"
+  - "Collect SSY passbook"

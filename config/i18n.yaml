@@ -1,0 +1,48 @@
+# config/i18n.yaml
+# Internationalization strings and phrases
+
+messages:
+  INFO_NOT_AVAILABLE:
+    hi-IN: "यह जानकारी अभी उपलब्ध नहीं है। हमारे पास इसके लिए सत्यापित सरकारी दस्तावेज़ नहीं है।"
+    en-IN: "This information is not available yet. We do not have a verified government record for this."
+    bn-IN: "এই তথ্যটি এখনও উপলব্ধ নেই।"
+    te-IN: "ఈ సమాచారం ఇంకా అందుబాటులో లేదు."
+    ta-IN: "இந்த தகவல் இன்னும் கிடைக்கவில்லை."
+    mr-IN: "ही माहिती अद्याप उपलब्ध नाही."
+    gu-IN: "આ માહિતી હજુ ઉપલબ્ધ નથી."
+    kn-IN: "ಈ ಮಾಹಿತಿ ಇನ್ನೂ ಲಭ್ಯವಿಲ್ಲ."
+    ml-IN: "ഈ വിവരം ഇപ്പോൾ ലഭ്യമല്ല."
+    pa-IN: "ਇਹ ਜਾਣਕਾਰੀ ਹਾਲੇ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।"
+    od-IN: "ଏହି ସୂଚନା ଏପର୍ଯ୍ୟନ୍ତ ଉପଲବ୍ଧ ନାହିଁ।"
+
+  CONFIRM_PROMPT_PREFIX:
+    hi-IN: "क्या आप यह अपडेट करना चाहते हैं: "
+    en-IN: "Did you say you want to update: "
+
+  CONFIRM_PROMPT_SUFFIX:
+    hi-IN: "पुष्टि करने के लिए 'हाँ' कहें या बटन दबाएं।"
+    en-IN: "Please say 'Yes' or tap confirm to proceed."
+
+  CONFIRMED_SUCCESS:
+    hi-IN: "आपकी जानकारी सफलतापूर्वक अपडेट कर दी गई है।"
+    en-IN: "Your information has been successfully updated."
+
+  CANCELLED:
+    hi-IN: "अपडेट रद्द कर दिया गया है।"
+    en-IN: "Update was cancelled."
+
+  NO_DOCUMENTS_FOUND:
+    hi-IN: "आपके खाते में अभी कोई अपलोड किया गया दस्तावेज़ नहीं मिला है।"
+    en-IN: "No uploaded documents were found in your profile."
+
+  CONSENT_REQUIRED:
+    hi-IN: "कृपया आगे बढ़ने से पहले सहमति दर्ज करें।"
+    en-IN: "Please provide consent before proceeding."
+
+  VOICE_FALLBACK_NOTE:
+    hi-IN: "ऑडियो उपलब्ध नहीं है, टेक्स्ट विवरण नीचे दिया गया है।"
+    en-IN: "Audio is not available; text description is provided below."
+
+  DEFAULT_GREETING:
+    hi-IN: "नमस्ते! मैं ग्राम-ज्ञान हूँ। आप मुझसे सरकारी योजनाओं, गाँव के प्रोजेक्ट या अपने दस्तावेज़ों के बारे में पूछ सकते हैं।"
+    en-IN: "Hello! I am GRAAM-GYAAN. You can ask me about government welfare schemes, local projects, or your documents."

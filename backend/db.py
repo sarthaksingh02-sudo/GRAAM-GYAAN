@@ -138,10 +138,17 @@ CREATE INDEX IF NOT EXISTS idx_conversations_sess  ON conversations(session_id, 
 """
 
 
-def init_db(db_path: Path = DB_PATH) -> None:
+def get_db_path() -> Path:
+    """Return the current active database path."""
+    db_env = os.getenv("DATABASE_URL", "graam_gyaan.db").replace("sqlite:///./", "")
+    return Path(db_env)
+
+
+def init_db(db_path: Path | None = None) -> None:
     """Create all tables (idempotent)."""
-    log.info("Initialising database at %s", db_path)
-    conn = sqlite3.connect(db_path)
+    target = db_path or get_db_path()
+    log.info("Initialising database at %s", target)
+    conn = sqlite3.connect(target)
     try:
         conn.executescript(SCHEMA_SQL)
         conn.commit()
@@ -150,9 +157,10 @@ def init_db(db_path: Path = DB_PATH) -> None:
         conn.close()
 
 
-def get_conn(db_path: Path = DB_PATH) -> sqlite3.Connection:
+def get_conn(db_path: Path | None = None) -> sqlite3.Connection:
     """Return a synchronous SQLite connection with Row factory."""
-    conn = sqlite3.connect(db_path)
+    target = db_path or get_db_path()
+    conn = sqlite3.connect(target)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")

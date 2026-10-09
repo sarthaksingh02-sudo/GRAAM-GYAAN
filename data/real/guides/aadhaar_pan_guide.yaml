@@ -1,0 +1,14 @@
+# data/real/guides/aadhaar_pan_guide.yaml
+topic: "aadhaar_pan"
+title: "Aadhaar Card, Mobile Link & PAN Card Guide"
+title_hi: "आधार कार्ड, मोबाइल लिंक एवं पैन कार्ड मार्गदर्शिका"
+source_url: "https://uidai.gov.in"
+verified_date: "2026-03-01"
+
+steps:
+  - id: "mobile_update"
+    title_hi: "आधार में मोबाइल नंबर कैसे जोड़ें या बदलें?"
+    description_hi: "नजदीकी डाकघर या आधार सेवा केंद्र पर बायोमेट्रिक प्रमाणीकरण कराकर ₹50 शुल्क देकर 48 घंटे में मोबाइल नंबर अपडेट करवा सकते हैं।"
+  - id: "pan_instant"
+    title_hi: "मुफ़्त ई-पैन (e-PAN) कैसे बनाएं?"
+    description_hi: "आयकर विभाग के e-Filing पोर्टल पर आधार ओटीपी के माध्यम से 10 मिनट में निःशुल्क डिजिटल पैन कार्ड बन जाता है।"

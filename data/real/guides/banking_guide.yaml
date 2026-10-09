@@ -1,0 +1,17 @@
+# data/real/guides/banking_guide.yaml
+topic: "banking"
+title: "Rural Banking, DBT & Aadhaar Seeding Guide"
+title_hi: "ग्रामीण बैंकिंग, डीबीटी एवं आधार सीडिंग मार्गदर्शिका"
+source_url: "https://dbtbharat.gov.in"
+verified_date: "2026-03-01"
+
+steps:
+  - id: "dbt_activation"
+    title_hi: "बैंक खाते में आधार सीडिंग (DBT) कैसे करवाएं?"
+    description_hi: "अपनी बैंक शाखा में जाकर 'आधार सीडिंग सह डीबीटी मैंडेट फॉर्म' भरें और आधार कार्ड की प्रति संलग्न करें। बायोमेट्रिक सत्यापन के बाद 48 घंटे में डीबीटी सक्रिय हो जाती है।"
+  - id: "check_dbt_status"
+    title_hi: "डीबीटी स्थिति कैसे जांचें?"
+    description_hi: "myAadhaar पोर्टल या *99*99*1# डायल करके जांचें कि कौन सा बैंक खाता एनपीसीआई (NPCI) मैपर से जुड़ा है।"
+  - id: "zero_balance_account"
+    title_hi: "जन धन (PMJDY) जीरो बैलेंस खाता कैसे खोलें?"
+    description_hi: "नजदीकी बैंक मित्र / बीसी सखी या बैंक शाखा में आधार कार्ड देकर तुरंत जीरो बैलेंस खाता खुलवाया जा सकता है जिसमें ₹2 लाख का दुर्घटना बीमा मिलता है।"

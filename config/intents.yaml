@@ -1,0 +1,132 @@
+# config/intents.yaml
+# Intent definitions, example trigger phrases, and quick-question chips per language
+
+intents:
+  - id: "find_schemes_general"
+    tool: "find_schemes"
+    description: "Search eligible government schemes for family"
+    chips:
+      hi-IN: "मेरे परिवार के लिए कौन सी योजनाएं हैं?"
+      en-IN: "What schemes are available for my family?"
+    examples:
+      hi-IN:
+        - "मेरे लिए कौन सी सरकारी योजना है"
+        - "योजनाएं बताओ"
+        - "सरकारी योजनाओं की जानकारी दो"
+      en-IN:
+        - "tell me government schemes"
+        - "what schemes can I apply for"
+
+  - id: "find_schemes_farmer"
+    tool: "find_schemes"
+    default_query: "farmer"
+    description: "Search agricultural and farmer welfare schemes"
+    chips:
+      hi-IN: "किसानों के लिए क्या सहायता उपलब्ध है?"
+      en-IN: "What benefits are available for farmers?"
+    examples:
+      hi-IN:
+        - "किसान योजना"
+        - "पीएम किसान का पैसा"
+        - "खेती के लिए सहायता"
+      en-IN:
+        - "farmer schemes"
+        - "pm kisan status"
+        - "agriculture subsidy"
+
+  - id: "find_schemes_daughter"
+    tool: "find_schemes"
+    default_query: "daughter"
+    description: "Search schemes for girl child / daughter"
+    chips:
+      hi-IN: "मेरी बेटी के लिए क्या योजनाएं हैं?"
+      en-IN: "What schemes exist for my daughter?"
+    examples:
+      hi-IN:
+        - "बेटी के लिए योजना"
+        - "सुकन्या समृद्धि योजना"
+        - "लड़कियों की पढ़ाई के लिए छात्रवृत्ति"
+      en-IN:
+        - "schemes for my daughter"
+        - "sukanya samriddhi"
+        - "girl child education grant"
+
+  - id: "get_profile_and_missing"
+    tool: "get_profile"
+    description: "Check family profile and missing documents checklist"
+    chips:
+      hi-IN: "मेरे कौन से दस्तावेज़ छूटे हुए हैं?"
+      en-IN: "Which documents are missing in my profile?"
+    examples:
+      hi-IN:
+        - "मेरी प्रोफाइल दिखाओ"
+        - "कौन से कागज़ बाकी हैं"
+        - "दस्तावेज़ की स्थिति"
+      en-IN:
+        - "show my profile"
+        - "what documents are missing"
+        - "check document checklist"
+
+  - id: "get_regional_projects"
+    tool: "get_regional_projects"
+    description: "List development projects in the district/panchayat"
+    chips:
+      hi-IN: "मेरे क्षेत्र में कौन से विकास कार्य चल रहे हैं?"
+      en-IN: "What development projects are in my area?"
+    examples:
+      hi-IN:
+        - "गाँव में क्या काम चल रहा है"
+        - "जिले के विकास कार्य"
+        - "सड़क और पानी का प्रोजेक्ट"
+      en-IN:
+        - "projects in my area"
+        - "district development projects"
+        - "local road or water projects"
+
+  - id: "get_banking_guide"
+    tool: "get_needs_guide"
+    topic: "banking"
+    description: "Guide on bank account, DBT, and Aadhaar seeding"
+    chips:
+      hi-IN: "बैंक खाते में डीबीटी (DBT) कैसे चालू करें?"
+      en-IN: "How to enable DBT and Aadhaar seeding in bank?"
+    examples:
+      hi-IN:
+        - "खाते में डीबीटी कैसे चालू करें"
+        - "आधार लिंक बैंक"
+        - "पैसा खाते में नहीं आया"
+      en-IN:
+        - "how to enable DBT"
+        - "aadhaar link bank account"
+        - "dbt payment guide"
+
+  - id: "get_ration_guide"
+    tool: "get_needs_guide"
+    topic: "ration"
+    description: "Guide on Ration Card and e-KYC"
+    chips:
+      hi-IN: "राशन कार्ड में नाम कैसे जोड़ें?"
+      en-IN: "How to add a member to Ration Card?"
+    examples:
+      hi-IN:
+        - "राशन कार्ड ई-केवाईसी कैसे करें"
+        - "राशन कार्ड में नया नाम जोड़ना"
+        - "राशन नहीं मिल रहा"
+      en-IN:
+        - "ration card ekyc guide"
+        - "add member in ration card"
+
+  - id: "explain_latest_document"
+    tool: "explain_document"
+    description: "Explain uploaded notice or official document"
+    chips:
+      hi-IN: "अपलोड किए गए नोटिस का क्या मतलब है?"
+      en-IN: "What does my uploaded notice mean?"
+    examples:
+      hi-IN:
+        - "इस नोटिस में क्या लिखा है"
+        - "मुझे क्या करना होगा"
+        - "दस्तावेज़ समझाओ"
+      en-IN:
+        - "explain this notice"
+        - "what should I do for this document"

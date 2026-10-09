@@ -1,0 +1,14 @@
+# data/real/guides/ration_guide.yaml
+topic: "ration"
+title: "Ration Card, Member Addition & e-KYC Guide"
+title_hi: "राशन कार्ड, सदस्य जोड़ना एवं ई-केवाईसी मार्गदर्शिका"
+source_url: "https://nfsa.gov.in"
+verified_date: "2026-03-01"
+
+steps:
+  - id: "ration_ekyc"
+    title_hi: "राशन कार्ड ई-केवाईसी कैसे करें?"
+    description_hi: "उचित दर दुकान (कोटेदार) के पास जाकर e-PoS मशीन पर सभी पारिवारिक सदस्यों का बायोमेट्रिक फिंगरप्रिंट या आइरिस स्कैन करवाएं।"
+  - id: "add_member"
+    title_hi: "राशन कार्ड में नया सदस्य (नवविवाहिता/बच्चा) कैसे जोड़ें?"
+    description_hi: "ग्राम सचिवालय या सीएससी केंद्र पर सदस्य का आधार कार्ड और जन्म प्रमाण पत्र / विवाह प्रमाण पत्र संलग्न कर ऑनलाइन आवेदन करें।"
