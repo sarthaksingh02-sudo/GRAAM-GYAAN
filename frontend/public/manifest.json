@@ -1,0 +1,22 @@
+{
+  "name": "GRAAM-GYAAN 🌾 ग्राम-ज्ञान",
+  "short_name": "GRAAM-GYAAN",
+  "description": "AI-powered rural welfare assistant powered by Sarvam AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F7F4",
+  "theme_color": "#1B5E20",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
