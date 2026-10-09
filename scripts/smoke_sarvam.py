@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 scripts/smoke_sarvam.py — GRAAM-GYAAN Sarvam AI smoke test.
 
@@ -25,6 +25,11 @@ import os
 import sys
 import time
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 
 # ── ensure repo root is on path ──────────────────────────────────────────────
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -197,8 +202,8 @@ try:
     audio_resp = client.text_to_speech.convert(
         text=HINDI_SENTENCE,
         language_code="hi-IN",
-        model="bulbul:v4-flash",
-        speaker="meera",
+        model="bulbul:v3",
+        speaker="priya",
     )
     elapsed = time.monotonic() - t0
 
@@ -239,7 +244,10 @@ try:
         ],
     )
     elapsed = time.monotonic() - t0
-    reply = resp.choices[0].message.content
+    reply = ""
+    if hasattr(resp, "choices") and resp.choices:
+        msg = resp.choices[0].message
+        reply = getattr(msg, "content", str(msg))
     report("Chat (sarvam-105b)", True, f"reply={repr(reply[:120])}", elapsed)
 
 except Exception as exc:
