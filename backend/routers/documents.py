@@ -478,6 +478,19 @@ def confirm_document(
 @router.get("/audio/{filename}")
 def stream_audio(filename: str):
     """Serve generated Bulbul TTS WAV audio file."""
+    from backend.active_user import public_mode
+    if public_mode() and not filename.startswith("guide_"):
+        user_id = get_active_user_id()
+        conn = get_conn()
+        try:
+            url = "/api/documents/audio/" + filename
+            owned = conn.execute("SELECT 1 FROM conversations WHERE user_id=? AND audio_path=?", (user_id, url)).fetchone()
+            if not owned:
+                owned = conn.execute("SELECT 1 FROM document_jobs WHERE user_id=? AND job_id=?", (user_id, Path(filename).stem)).fetchone()
+            if not owned:
+                raise HTTPException(404, "Audio file not found")
+        finally:
+            conn.close()
     app_cfg = get_app_config()
     audio_dir = BASE_DIR / app_cfg.get("audio_output_dir", "uploads/audio")
     audio_path = (audio_dir / filename).resolve()

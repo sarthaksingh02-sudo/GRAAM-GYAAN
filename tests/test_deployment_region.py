@@ -17,6 +17,17 @@ def test_public_browsers_cannot_read_or_overwrite_each_other(tmp_path, monkeypat
         assert first.get("/api/profile").json()["household"]["village"] == "A"
         assert second.get("/api/profile").json()["household"]["village"] == "B"
         assert "no-store" in first.get("/api/profile").headers["cache-control"]
+        from backend.db import get_conn
+        conn=get_conn()
+        first_id=first.get("/api/profile").json()["household"]["id"]
+        conn.execute("INSERT INTO conversations(user_id,session_id,turn,role,content_text,audio_path) VALUES(?,?,?,?,?,?)", (first_id,"private",1,"assistant","private answer","/api/documents/audio/conv_private.wav"))
+        conn.commit();conn.close()
+        audio=tmp_path / "uploads" / "audio"
+        audio.mkdir(parents=True)
+        (audio/"conv_private.wav").write_bytes(b"RIFF")
+        monkeypatch.setenv("DATA_DIR",str(tmp_path))
+        assert first.get("/api/documents/audio/conv_private.wav").status_code == 200
+        assert second.get("/api/documents/audio/conv_private.wav").status_code == 404
 
 
 def test_location_cache_isolation_and_failed_refresh_retains_timestamp(tmp_path, monkeypatch):
