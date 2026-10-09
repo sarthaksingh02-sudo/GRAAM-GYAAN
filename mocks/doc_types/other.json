@@ -1,0 +1,35 @@
+{
+  "doc_type": "other",
+  "fields": [
+    {
+      "key": "summary",
+      "label": "Document Summary",
+      "value": "दस्तावेज़ में सामान्य जानकारी उपलब्ध कराई गई है।",
+      "confidence": 0.90,
+      "masked": false
+    },
+    {
+      "key": "whatToDo",
+      "label": "Action Items",
+      "value": [
+        "संबंधित कार्यालय से संपर्क करें"
+      ],
+      "confidence": 0.88,
+      "masked": false
+    },
+    {
+      "key": "deadline",
+      "label": "Deadline",
+      "value": null,
+      "confidence": 0.95,
+      "masked": false
+    },
+    {
+      "key": "documentsNeeded",
+      "label": "Documents Needed",
+      "value": [],
+      "confidence": 0.90,
+      "masked": false
+    }
+  ]
+}

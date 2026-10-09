@@ -1,0 +1,40 @@
+{
+  "doc_type": "bank_passbook",
+  "fields": [
+    {
+      "key": "account_holder",
+      "label": "Account Holder Name",
+      "value": "Ramesh Kumar",
+      "confidence": 0.98,
+      "masked": false
+    },
+    {
+      "key": "bank_name",
+      "label": "Bank Name",
+      "value": "State Bank of India",
+      "confidence": 0.99,
+      "masked": false
+    },
+    {
+      "key": "branch",
+      "label": "Branch Name",
+      "value": "Rampur Branch",
+      "confidence": 0.95,
+      "masked": false
+    },
+    {
+      "key": "ifsc",
+      "label": "IFSC Code",
+      "value": "SBIN0001234",
+      "confidence": 0.97,
+      "masked": false
+    },
+    {
+      "key": "account_number",
+      "label": "Account Number",
+      "value": "XXXXXXXX7890",
+      "confidence": 0.99,
+      "masked": true
+    }
+  ]
+}

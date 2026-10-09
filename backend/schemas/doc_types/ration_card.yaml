@@ -1,0 +1,44 @@
+# Sarvam Extract schema for Ration Card
+title: "Ration Card Extraction Schema"
+description: "Extracts ration card details and family member list"
+fields:
+  - key: "card_type"
+    label: "Card Type / Category"
+    type: "string"
+    description: "e.g., AAY, PHH, BPL, APL"
+    masked: false
+  - key: "head_of_family"
+    label: "Head of Family Name"
+    type: "string"
+    description: "Full name of the primary cardholder / head of family"
+    masked: false
+  - key: "state"
+    label: "State"
+    type: "string"
+    description: "State issuing the ration card"
+    masked: false
+  - key: "district"
+    label: "District"
+    type: "string"
+    description: "District or tehsil name"
+    masked: false
+  - key: "ration_card_number"
+    label: "Ration Card Number"
+    type: "string"
+    description: "Ration card ID number"
+    masked: true
+    mask_type: "last4"
+  - key: "members"
+    label: "Family Members List"
+    type: "array"
+    items:
+      - name: "name"
+        type: "string"
+        description: "Member's full name"
+      - name: "relation"
+        type: "string"
+        description: "Relation to head of family (e.g. self, spouse, son, daughter, mother)"
+      - name: "age"
+        type: "string"
+        description: "Age or birth year if present"
+    masked: false

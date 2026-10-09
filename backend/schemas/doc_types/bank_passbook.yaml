@@ -1,0 +1,30 @@
+# Sarvam Extract schema for Bank Passbook
+title: "Bank Passbook Extraction Schema"
+description: "Extracts bank account details"
+fields:
+  - key: "account_holder"
+    label: "Account Holder Name"
+    type: "string"
+    description: "Name of the bank account holder"
+    masked: false
+  - key: "bank_name"
+    label: "Bank Name"
+    type: "string"
+    description: "Name of the issuing bank"
+    masked: false
+  - key: "branch"
+    label: "Branch Name"
+    type: "string"
+    description: "Branch location or name"
+    masked: false
+  - key: "ifsc"
+    label: "IFSC Code"
+    type: "string"
+    description: "11-character Indian Financial System Code"
+    masked: false
+  - key: "account_number"
+    label: "Account Number"
+    type: "string"
+    description: "Bank account number"
+    masked: true
+    mask_type: "last4"

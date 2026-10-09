@@ -1,0 +1,35 @@
+# Sarvam Extract schema for Electricity Bill
+title: "Electricity Bill Extraction Schema"
+description: "Extracts electricity utility consumer and billing information"
+fields:
+  - key: "consumer_name"
+    label: "Consumer Name"
+    type: "string"
+    description: "Name of the electricity consumer"
+    masked: false
+  - key: "consumer_number"
+    label: "Consumer Number"
+    type: "string"
+    description: "Consumer / Account ID on the electricity bill"
+    masked: true
+    mask_type: "last4"
+  - key: "amount_due"
+    label: "Amount Due"
+    type: "string"
+    description: "Total payable or due amount with currency"
+    masked: false
+  - key: "due_date"
+    label: "Due Date"
+    type: "string"
+    description: "Last date of payment"
+    masked: false
+  - key: "billing_period"
+    label: "Billing Period / Month"
+    type: "string"
+    description: "Bill cycle month or start/end dates"
+    masked: false
+  - key: "address"
+    label: "Consumer Address"
+    type: "string"
+    description: "Service address mentioned on the bill"
+    masked: false

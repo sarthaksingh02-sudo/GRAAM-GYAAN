@@ -1,0 +1,25 @@
+# Sarvam Extract schema for PAN Card
+title: "PAN Card Extraction Schema"
+description: "Extracts PAN details"
+fields:
+  - key: "name"
+    label: "Cardholder Name"
+    type: "string"
+    description: "Full name of the PAN holder"
+    masked: false
+  - key: "father_name"
+    label: "Father's Name"
+    type: "string"
+    description: "Father's name of the cardholder"
+    masked: false
+  - key: "dob"
+    label: "Date of Birth"
+    type: "string"
+    description: "DOB formatted as DD/MM/YYYY or YYYY-MM-DD"
+    masked: false
+  - key: "pan_number"
+    label: "PAN Number"
+    type: "string"
+    description: "10-character alphanumeric PAN ID"
+    masked: true
+    mask_type: "pan"

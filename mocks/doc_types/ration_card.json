@@ -1,0 +1,52 @@
+{
+  "doc_type": "ration_card",
+  "fields": [
+    {
+      "key": "card_type",
+      "label": "Card Type / Category",
+      "value": "PHH (Priority Household)",
+      "confidence": 0.98,
+      "masked": false
+    },
+    {
+      "key": "head_of_family",
+      "label": "Head of Family Name",
+      "value": "Ramesh Kumar",
+      "confidence": 0.96,
+      "masked": false
+    },
+    {
+      "key": "state",
+      "label": "State",
+      "value": "Uttar Pradesh",
+      "confidence": 0.95,
+      "masked": false
+    },
+    {
+      "key": "district",
+      "label": "District",
+      "value": "Varanasi",
+      "confidence": 0.94,
+      "masked": false
+    },
+    {
+      "key": "ration_card_number",
+      "label": "Ration Card Number",
+      "value": "XXXXXXXX4589",
+      "confidence": 0.99,
+      "masked": true
+    },
+    {
+      "key": "members",
+      "label": "Family Members List",
+      "value": [
+        {"name": "Ramesh Kumar", "relation": "self", "age": "42"},
+        {"name": "Sunita Devi", "relation": "spouse", "age": "38"},
+        {"name": "Aman Kumar", "relation": "son", "age": "16"},
+        {"name": "Pooja Kumari", "relation": "daughter", "age": "12"}
+      ],
+      "confidence": 0.93,
+      "masked": false
+    }
+  ]
+}

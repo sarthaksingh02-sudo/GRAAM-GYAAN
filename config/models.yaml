@@ -1,0 +1,9 @@
+# Sarvam Model IDs and API configurations
+chat_model: "sarvam-105b"
+stt_model: "saaras:v4"
+tts_model: "bulbul:v4-flash"
+tts_default_speaker: "meera"
+doc_digitise_output_format: "md"
+doc_extract_output_format: "json"
+max_retries: 2
+request_timeout_seconds: 45

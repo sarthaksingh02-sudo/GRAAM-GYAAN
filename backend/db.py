@@ -1,20 +1,20 @@
-﻿"""
-backend/db.py — SQLite schema and migration runner for GRAAM-GYAAN.
+"""
+backend/db.py — SQLite schema, database connection, and data models for GRAAM-GYAAN.
 
 Run directly to initialise the database:
     python -m backend.db
 
 Tables:
-  users            - village operator / household accounts (NO Aadhaar stored)
-  family_members   - individual members of a household
+  users            - household accounts with consent tracking (NO Aadhaar stored)
+  family_members   - individual members of a household (DOB stored, age computed dynamically)
   documents        - uploaded document records
-  extracted_fields - key-value fields extracted by Sarvam Vision
-  conversations    - voice/chat conversation turns
+  extracted_fields - key-value fields extracted by Sarvam Vision (masked)
+  document_jobs    - async Document AI processing jobs
+  conversations    - voice/chat assistant history
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 import sqlite3
@@ -24,108 +24,122 @@ log = logging.getLogger(__name__)
 
 DB_PATH = Path(os.getenv("DATABASE_URL", "graam_gyaan.db").replace("sqlite:///./", ""))
 
-# ---------------------------------------------------------------------------
-# DDL — all tables
-# ---------------------------------------------------------------------------
 SCHEMA_SQL = """
--- ─────────────────────────────────────────────────────────────────────────────
--- users: one row per household / village operator
--- NO Aadhaar or biometric data stored here.
--- ─────────────────────────────────────────────────────────────────────────────
+-- ===========================================================================
+-- users: household metadata and consent
+-- ===========================================================================
 CREATE TABLE IF NOT EXISTS users (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    village         TEXT    NOT NULL,
+    village         TEXT    NOT NULL DEFAULT 'Unknown',
     panchayat       TEXT,
     district        TEXT,
     state           TEXT    NOT NULL DEFAULT 'Unknown',
-    language_pref   TEXT    NOT NULL DEFAULT 'hi-IN',  -- Sarvam language code
-    consent_given   INTEGER NOT NULL DEFAULT 0,         -- 1 when consent screen accepted
-    consent_at      TEXT,                               -- ISO-8601 timestamp
+    language_pref   TEXT    NOT NULL DEFAULT 'hi-IN',
+    consent_given   INTEGER NOT NULL DEFAULT 0,
+    consent_at      TEXT,
     created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- family_members: individual members linked to a household
--- ─────────────────────────────────────────────────────────────────────────────
+-- ===========================================================================
+-- family_members: individual members linked to household
+-- ===========================================================================
 CREATE TABLE IF NOT EXISTS family_members (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name            TEXT    NOT NULL,
-    dob             TEXT,           -- YYYY-MM-DD; age computed at query time
+    dob             TEXT,           -- YYYY-MM-DD; age computed dynamically as ageYears
     gender          TEXT,           -- male / female / other
-    education_level TEXT,           -- none / primary / middle / secondary / graduate / postgraduate
+    relation        TEXT    NOT NULL DEFAULT 'self', -- self / spouse / son / daughter / father / mother / other
+    education_level TEXT,
     occupation      TEXT,
-    caste_category  TEXT,           -- general / obc / sc / st
+    caste_category  TEXT,
     is_disabled     INTEGER DEFAULT 0,
-    land_acres      REAL,
+    land_acres      REAL    DEFAULT 0.0,
     created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- documents: uploaded or referenced government documents
--- ─────────────────────────────────────────────────────────────────────────────
+-- ===========================================================================
+-- documents: confirmed or uploaded documents
+-- ===========================================================================
 CREATE TABLE IF NOT EXISTS documents (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id         INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    doc_type        TEXT    NOT NULL,   -- e.g. income_certificate, ration_card, scheme_notice
-    file_path       TEXT,               -- local path (never Aadhaar scan stored)
-    source_url      TEXT,               -- original government URL if applicable
+    user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    member_id       INTEGER REFERENCES family_members(id) ON DELETE SET NULL,
+    job_id          TEXT,
+    doc_type        TEXT    NOT NULL,
+    category        TEXT    DEFAULT 'id_benefit',
+    file_path       TEXT,
+    source_url      TEXT,
     language        TEXT    DEFAULT 'hi-IN',
-    status          TEXT    NOT NULL DEFAULT 'pending',  -- pending / extracted / approved / rejected
+    status          TEXT    NOT NULL DEFAULT 'ready',
     uploaded_at     TEXT    NOT NULL DEFAULT (datetime('now')),
     approved_at     TEXT,
     notes           TEXT
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- extracted_fields: key-value pairs from Sarvam Vision Doc AI
--- Each row is one field from one document.
--- ─────────────────────────────────────────────────────────────────────────────
+-- ===========================================================================
+-- extracted_fields: extracted key-value pairs (strictly masked)
+-- ===========================================================================
 CREATE TABLE IF NOT EXISTS extracted_fields (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     document_id     INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     field_name      TEXT    NOT NULL,
+    field_label     TEXT,
     field_value     TEXT,
-    confidence      REAL,           -- 0.0–1.0 if provided by model
-    source_span     TEXT,           -- text snippet the model grounded this on
-    is_mock         INTEGER DEFAULT 0,   -- 1 if produced in MOCK mode
+    confidence      REAL,
+    is_masked       INTEGER DEFAULT 0,
+    is_mock         INTEGER DEFAULT 0,
     extracted_at    TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
--- conversations: turn-by-turn voice / chat assistant history
--- ─────────────────────────────────────────────────────────────────────────────
+-- ===========================================================================
+-- document_jobs: background Document AI job tracking
+-- ===========================================================================
+CREATE TABLE IF NOT EXISTS document_jobs (
+    job_id          TEXT PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status          TEXT NOT NULL DEFAULT 'queued', -- queued / processing / ready / failed
+    doc_type        TEXT,
+    category        TEXT,
+    file_path       TEXT,
+    lang            TEXT DEFAULT 'hi-IN',
+    result_json     TEXT,
+    error_code      TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ===========================================================================
+-- conversations: assistant turns
+-- ===========================================================================
 CREATE TABLE IF NOT EXISTS conversations (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id         INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    session_id      TEXT    NOT NULL,   -- UUID per session
-    turn            INTEGER NOT NULL,   -- 1-indexed within a session
-    role            TEXT    NOT NULL,   -- user / assistant
+    user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    session_id      TEXT    NOT NULL,
+    turn            INTEGER NOT NULL,
+    role            TEXT    NOT NULL,
     content_text    TEXT    NOT NULL,
-    audio_path      TEXT,               -- path to WAV if voice turn
+    audio_path      TEXT,
     language        TEXT    DEFAULT 'hi-IN',
     is_mock         INTEGER DEFAULT 0,
     latency_ms      INTEGER,
     created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Indexes
--- ─────────────────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_family_members_user ON family_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_documents_user      ON documents(user_id);
+CREATE INDEX IF NOT EXISTS idx_documents_member    ON documents(member_id);
 CREATE INDEX IF NOT EXISTS idx_extracted_doc       ON extracted_fields(document_id);
+CREATE INDEX IF NOT EXISTS idx_doc_jobs_user       ON document_jobs(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_sess  ON conversations(session_id, turn);
 """
 
 
-# ---------------------------------------------------------------------------
-# Migration runner
-# ---------------------------------------------------------------------------
 def init_db(db_path: Path = DB_PATH) -> None:
-    """Create all tables (idempotent — uses IF NOT EXISTS)."""
+    """Create all tables (idempotent)."""
     log.info("Initialising database at %s", db_path)
     conn = sqlite3.connect(db_path)
     try:
@@ -137,7 +151,7 @@ def init_db(db_path: Path = DB_PATH) -> None:
 
 
 def get_conn(db_path: Path = DB_PATH) -> sqlite3.Connection:
-    """Return a synchronous SQLite connection with row_factory set."""
+    """Return a synchronous SQLite connection with Row factory."""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
@@ -145,9 +159,6 @@ def get_conn(db_path: Path = DB_PATH) -> sqlite3.Connection:
     return conn
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     init_db()

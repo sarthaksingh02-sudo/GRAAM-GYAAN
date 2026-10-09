@@ -1,0 +1,16 @@
+# Application settings loaded at runtime
+app_name: "GRAAM-GYAAN"
+version: "0.1.0"
+max_upload_bytes: 10485760 # 10MB
+max_pdf_pages: 10
+max_image_dimension: 2048
+allowed_extensions:
+  - ".jpg"
+  - ".jpeg"
+  - ".png"
+  - ".heic"
+  - ".pdf"
+job_timeout_seconds: 60
+job_poll_interval_seconds: 2
+upload_dir: "uploads"
+audio_output_dir: "uploads/audio"

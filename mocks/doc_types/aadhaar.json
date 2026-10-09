@@ -1,0 +1,40 @@
+{
+  "doc_type": "aadhaar",
+  "fields": [
+    {
+      "key": "name",
+      "label": "Full Name",
+      "value": "Ramesh Kumar",
+      "confidence": 0.99,
+      "masked": false
+    },
+    {
+      "key": "dob",
+      "label": "Date of Birth / Year of Birth",
+      "value": "1984-05-14",
+      "confidence": 0.98,
+      "masked": false
+    },
+    {
+      "key": "gender",
+      "label": "Gender",
+      "value": "Male",
+      "confidence": 0.99,
+      "masked": false
+    },
+    {
+      "key": "address",
+      "label": "Address",
+      "value": "Village Rampur, Post Nayapara, District Varanasi, Uttar Pradesh - 221001",
+      "confidence": 0.95,
+      "masked": false
+    },
+    {
+      "key": "aadhaar_number",
+      "label": "Aadhaar Number",
+      "value": "XXXX-XXXX-8921",
+      "confidence": 0.99,
+      "masked": true
+    }
+  ]
+}

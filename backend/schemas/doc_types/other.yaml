@@ -1,0 +1,26 @@
+# Generic schema for unrecognized documents
+title: "General Document Extraction Schema"
+description: "General summary and action points"
+fields:
+  - key: "summary"
+    label: "Document Summary"
+    type: "string"
+    description: "Brief summary of the document in user's language"
+    masked: false
+  - key: "whatToDo"
+    label: "Action Items"
+    type: "array"
+    items: "string"
+    description: "Steps or actions described in document"
+    masked: false
+  - key: "deadline"
+    label: "Deadline"
+    type: "string"
+    description: "Explicit deadline or null"
+    masked: false
+  - key: "documentsNeeded"
+    label: "Documents Needed"
+    type: "array"
+    items: "string"
+    description: "List of referenced documents"
+    masked: false

@@ -1,0 +1,40 @@
+{
+  "doc_type": "official_notice",
+  "fields": [
+    {
+      "key": "summary",
+      "label": "Notice Summary",
+      "value": "ग्राम पंचायत रामपुर में प्रधानमंत्री किसान सम्मान निधि के अंतर्गत e-KYC एवं भूलेख अंकन शिविर 10 नवंबर 2026 तक पंचायत भवन पर आयोजित किया जा रहा है।",
+      "confidence": 0.95,
+      "masked": false
+    },
+    {
+      "key": "whatToDo",
+      "label": "Action Items for Citizen",
+      "value": [
+        "पंचायत भवन में उपस्थित होकर बायोमेट्रिक e-KYC पूर्ण कराएं",
+        "खतौनी की नकल और आधार कार्ड साथ लाएं"
+      ],
+      "confidence": 0.94,
+      "masked": false
+    },
+    {
+      "key": "deadline",
+      "label": "Application / Response Deadline",
+      "value": "2026-11-10",
+      "confidence": 0.96,
+      "masked": false
+    },
+    {
+      "key": "documentsNeeded",
+      "label": "Required Documents",
+      "value": [
+        "आधार कार्ड (Aadhaar Card)",
+        "बैंक पासबुक (Bank Passbook)",
+        "भूलेख / खतौनी नकल (Land Record)"
+      ],
+      "confidence": 0.93,
+      "masked": false
+    }
+  ]
+}

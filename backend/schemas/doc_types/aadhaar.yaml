@@ -1,0 +1,30 @@
+# Sarvam Extract schema for Aadhaar Card
+title: "Aadhaar Card Extraction Schema"
+description: "Extracts name, DOB, gender, address and masked Aadhaar number"
+fields:
+  - key: "name"
+    label: "Full Name"
+    type: "string"
+    description: "Resident full name in English or Hindi"
+    masked: false
+  - key: "dob"
+    label: "Date of Birth / Year of Birth"
+    type: "string"
+    description: "DOB formatted as YYYY-MM-DD or DD/MM/YYYY or YYYY"
+    masked: false
+  - key: "gender"
+    label: "Gender"
+    type: "string"
+    description: "Male / Female / Transgender"
+    masked: false
+  - key: "address"
+    label: "Address"
+    type: "string"
+    description: "Full residential address if present"
+    masked: false
+  - key: "aadhaar_number"
+    label: "Aadhaar Number"
+    type: "string"
+    description: "12-digit Aadhaar number"
+    masked: true
+    mask_type: "aadhaar"

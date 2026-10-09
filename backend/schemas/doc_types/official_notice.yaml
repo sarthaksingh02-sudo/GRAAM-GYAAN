@@ -1,0 +1,26 @@
+# Sarvam Extract schema for Official Notices / Circulars
+title: "Official Notice Extraction Schema"
+description: "Structured fields derived strictly from document text"
+fields:
+  - key: "summary"
+    label: "Notice Summary"
+    type: "string"
+    description: "Clear, spoken-friendly summary in user's language"
+    masked: false
+  - key: "whatToDo"
+    label: "Action Items for Citizen"
+    type: "array"
+    items: "string"
+    description: "Concrete steps the villager needs to take"
+    masked: false
+  - key: "deadline"
+    label: "Application / Response Deadline"
+    type: "string"
+    description: "Explicit deadline mentioned in text; null if not stated"
+    masked: false
+  - key: "documentsNeeded"
+    label: "Required Documents"
+    type: "array"
+    items: "string"
+    description: "List of certificates or documents required"
+    masked: false

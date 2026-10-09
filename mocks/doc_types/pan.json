@@ -1,0 +1,33 @@
+{
+  "doc_type": "pan",
+  "fields": [
+    {
+      "key": "name",
+      "label": "Cardholder Name",
+      "value": "Ramesh Kumar",
+      "confidence": 0.98,
+      "masked": false
+    },
+    {
+      "key": "father_name",
+      "label": "Father's Name",
+      "value": "Shri Ram Charan",
+      "confidence": 0.97,
+      "masked": false
+    },
+    {
+      "key": "dob",
+      "label": "Date of Birth",
+      "value": "1984-05-14",
+      "confidence": 0.99,
+      "masked": false
+    },
+    {
+      "key": "pan_number",
+      "label": "PAN Number",
+      "value": "XXXXXX4321",
+      "confidence": 0.99,
+      "masked": true
+    }
+  ]
+}

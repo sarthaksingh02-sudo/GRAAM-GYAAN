@@ -1,0 +1,85 @@
+# data/real/guides/expected_documents.yaml
+# Expected essential documents per family member relation / role in rural household
+# Source: Common Service Center (CSC) & MoRD Rural Citizen Documentation Standards
+source_url: "https://rural.gov.in"
+verified_date: "2026-03-01"
+
+expected_documents:
+  head:
+    - doc_type: "aadhaar"
+      title: "Aadhaar Card"
+      mandatory: true
+    - doc_type: "ration_card"
+      title: "Ration Card"
+      mandatory: true
+    - doc_type: "bank_passbook"
+      title: "Bank Passbook"
+      mandatory: true
+    - doc_type: "pan"
+      title: "PAN Card"
+      mandatory: false
+    - doc_type: "electricity_bill"
+      title: "Electricity Bill"
+      mandatory: false
+  self:
+    - doc_type: "aadhaar"
+      title: "Aadhaar Card"
+      mandatory: true
+    - doc_type: "ration_card"
+      title: "Ration Card"
+      mandatory: true
+    - doc_type: "bank_passbook"
+      title: "Bank Passbook"
+      mandatory: true
+    - doc_type: "pan"
+      title: "PAN Card"
+      mandatory: false
+  spouse:
+    - doc_type: "aadhaar"
+      title: "Aadhaar Card"
+      mandatory: true
+    - doc_type: "bank_passbook"
+      title: "Bank Passbook"
+      mandatory: true
+    - doc_type: "ration_card"
+      title: "Ration Card"
+      mandatory: false
+  son:
+    - doc_type: "aadhaar"
+      title: "Aadhaar Card"
+      mandatory: true
+    - doc_type: "bank_passbook"
+      title: "Bank Passbook (if adult)"
+      mandatory: false
+  daughter:
+    - doc_type: "aadhaar"
+      title: "Aadhaar Card"
+      mandatory: true
+    - doc_type: "bank_passbook"
+      title: "Bank Passbook (if adult)"
+      mandatory: false
+  child:
+    - doc_type: "aadhaar"
+      title: "Aadhaar Card"
+      mandatory: true
+  mother:
+    - doc_type: "aadhaar"
+      title: "Aadhaar Card"
+      mandatory: true
+    - doc_type: "bank_passbook"
+      title: "Bank Passbook"
+      mandatory: true
+  father:
+    - doc_type: "aadhaar"
+      title: "Aadhaar Card"
+      mandatory: true
+    - doc_type: "bank_passbook"
+      title: "Bank Passbook"
+      mandatory: true
+  default:
+    - doc_type: "aadhaar"
+      title: "Aadhaar Card"
+      mandatory: true
+    - doc_type: "bank_passbook"
+      title: "Bank Passbook"
+      mandatory: false

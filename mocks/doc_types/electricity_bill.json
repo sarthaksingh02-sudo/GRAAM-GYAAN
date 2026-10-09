@@ -1,0 +1,47 @@
+{
+  "doc_type": "electricity_bill",
+  "fields": [
+    {
+      "key": "consumer_name",
+      "label": "Consumer Name",
+      "value": "Ramesh Kumar",
+      "confidence": 0.98,
+      "masked": false
+    },
+    {
+      "key": "consumer_number",
+      "label": "Consumer Number",
+      "value": "XXXX5678",
+      "confidence": 0.99,
+      "masked": true
+    },
+    {
+      "key": "amount_due",
+      "label": "Amount Due",
+      "value": "₹450.00",
+      "confidence": 0.97,
+      "masked": false
+    },
+    {
+      "key": "due_date",
+      "label": "Due Date",
+      "value": "2026-11-15",
+      "confidence": 0.96,
+      "masked": false
+    },
+    {
+      "key": "billing_period",
+      "label": "Billing Period / Month",
+      "value": "October 2026",
+      "confidence": 0.94,
+      "masked": false
+    },
+    {
+      "key": "address",
+      "label": "Consumer Address",
+      "value": "House No 45, Nayapara, Rampur, Varanasi",
+      "confidence": 0.92,
+      "masked": false
+    }
+  ]
+}
