@@ -1,0 +1,25 @@
+{
+  "mock": false,
+  "is_demo_cache": true,
+  "note": "cached demo response",
+  "job_id": "demo-cache-job-notice-001",
+  "status": "completed",
+  "result": {
+    "doc_type": "official_notice",
+    "noticeDetails": {
+      "issuing_authority": "कार्यालय ग्राम पंचायत रामपुर (Varanasi)",
+      "date": "2026-10-05",
+      "summary": "यह ग्राम पंचायत रामपुर का आधिकारिक नोटिस है। इसमें प्रधानमंत्री किसान सम्मान निधि योजना के तहत 17वीं किस्त प्राप्त करने के लिए 10 नवंबर 2026 तक पंचायत भवन में ई-केवाईसी (e-KYC) एवं आधार-बैंक सीडिंग शिविर आयोजित करने की सूचना दी गई है। सभी किसान समय रहते अपना सत्यापन करा लें।",
+      "action_required": "पंचायत भवन में आधार कार्ड और बैंक पासबुक लेकर ई-केवाईसी कराएं",
+      "deadline": "2026-11-10",
+      "deadline_found": true
+    },
+    "extracted_fields": {
+      "authority": "Gram Panchayat Rampur",
+      "deadline": "2026-11-10",
+      "scheme_referenced": "PM-Kisan",
+      "camp_location": "Panchayat Bhavan Rampur"
+    }
+  },
+  "latency_s": 0.45
+}

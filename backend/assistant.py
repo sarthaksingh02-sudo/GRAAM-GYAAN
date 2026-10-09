@@ -359,13 +359,39 @@ def tool_explain_document(user_id: int, lang: str = "hi-IN") -> dict[str, Any]:
     conn = get_conn()
     try:
         cur = conn.cursor()
+        # 1. Check latest ready document job for notices
         cur.execute(
             """
-            SELECT d.*, j.result_json
+            SELECT * FROM document_jobs
+            WHERE user_id = ? AND status = 'ready'
+            ORDER BY created_at DESC LIMIT 1
+            """,
+            (user_id,),
+        )
+        job_row = cur.fetchone()
+
+        if job_row and job_row["result_json"]:
+            try:
+                res_json = json.loads(job_row["result_json"])
+                notice = res_json.get("noticeDetails")
+                if notice and notice.get("summary"):
+                    return {
+                        "text": notice["summary"],
+                        "sources": [{"name": notice.get("issuing_authority", "Official Notice"), "verified_date": notice.get("date", "Latest")}],
+                        "doc_type": "official_notice",
+                    }
+            except Exception:
+                pass
+
+        # 2. Check documents table for notices or other uploaded documents
+        cur.execute(
+            """
+            SELECT d.*, ef.field_value as summary_val, ef_auth.field_value as auth_val
             FROM documents d
-            LEFT JOIN document_jobs j ON d.job_id = j.job_id
+            LEFT JOIN extracted_fields ef ON d.id = ef.document_id AND ef.field_name = 'summary'
+            LEFT JOIN extracted_fields ef_auth ON d.id = ef_auth.document_id AND ef_auth.field_name = 'issuing_authority'
             WHERE d.user_id = ?
-            ORDER BY d.id DESC LIMIT 1
+            ORDER BY (d.doc_type = 'official_notice') DESC, d.id DESC LIMIT 1
             """,
             (user_id,),
         )
@@ -377,18 +403,15 @@ def tool_explain_document(user_id: int, lang: str = "hi-IN") -> dict[str, Any]:
             }
 
         doc_type = row["doc_type"]
-        res_json = row["result_json"]
-        details = {}
-        if res_json:
-            details = json.loads(res_json).get("noticeDetails") or {}
+        summary = row["summary_val"]
+        auth = row["auth_val"] or f"Document ({doc_type})"
 
-        summary = details.get("summary")
         if not summary:
             summary = f"यह आपका {doc_type} दस्तावेज़ है जो सफलतापूर्वक सत्यापित किया जा चुका है।"
 
         return {
             "text": summary,
-            "sources": [{"name": f"Document ({doc_type})", "verified_date": "Uploaded"}],
+            "sources": [{"name": auth, "verified_date": "Uploaded"}],
             "doc_type": doc_type,
         }
     finally:

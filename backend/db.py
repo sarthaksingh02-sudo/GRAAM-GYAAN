@@ -145,11 +145,25 @@ def get_db_path() -> Path:
 
 
 def init_db(db_path: Path | None = None) -> None:
-    """Create all tables (idempotent)."""
+    """Create all tables and run lightweight column migrations (idempotent)."""
     target = db_path or get_db_path()
     log.info("Initialising database at %s", target)
     conn = sqlite3.connect(target)
     try:
+        # Check and migrate columns if documents table already exists
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='documents'")
+        if cur.fetchone():
+            cur.execute("PRAGMA table_info(documents)")
+            cols = [r[1] for r in cur.fetchall()]
+            if "member_id" not in cols:
+                cur.execute("ALTER TABLE documents ADD COLUMN member_id INTEGER REFERENCES family_members(id) ON DELETE SET NULL")
+            if "job_id" not in cols:
+                cur.execute("ALTER TABLE documents ADD COLUMN job_id TEXT")
+            if "category" not in cols:
+                cur.execute("ALTER TABLE documents ADD COLUMN category TEXT DEFAULT 'id_benefit'")
+            conn.commit()
+
         conn.executescript(SCHEMA_SQL)
         conn.commit()
         log.info("Database ready.")

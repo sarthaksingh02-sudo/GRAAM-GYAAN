@@ -99,6 +99,7 @@ def get_schemes(
             "id": s.get("id"),
             "name": name_display,
             "category": cat_id,
+            "status": eval_res.get("status"),
             "sector": {
                 "name": sec_info.get("name_hi" if lang.startswith("hi") else "name", cat_id),
                 "icon": sec_info.get("icon", "Award"),

@@ -1,0 +1,8 @@
+{
+  "mock": false,
+  "is_demo_cache": true,
+  "note": "cached demo response",
+  "transcript": "मेरी बेटी के लिए क्या योजना है?",
+  "language": "hi-IN",
+  "latency_s": 0.32
+}

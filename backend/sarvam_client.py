@@ -1,5 +1,5 @@
 """
-backend/sarvam_client.py — Sarvam AI client wrapper with MOCK mode, retries, and disk cache.
+backend/sarvam_client.py — Sarvam AI client wrapper with MOCK mode, DEMO_CACHE support, retries, and disk cache.
 
 Follows official Sarvam Document AI flow, Saaras STT, Bulbul TTS, and Sarvam Chat.
 All models and timeouts are configured via config/models.yaml.
@@ -17,12 +17,14 @@ import time
 from pathlib import Path
 from typing import Any
 
-from backend.config_loader import get_models_config, get_mock_doc_result
+from backend.config_loader import get_mock_doc_result, get_models_config
 from backend.privacy import sanitize_extracted_dict
 
 log = logging.getLogger(__name__)
 
+BASE_DIR = Path(__file__).resolve().parent.parent
 _CACHE_DIR = Path(os.getenv("SARVAM_CACHE_DIR", ".cache/sarvam"))
+_DEMO_CACHE_DIR = BASE_DIR / "demo_cache"
 
 
 def _cache_key(prefix: str, payload: Any) -> str:
@@ -45,10 +47,25 @@ def _cache_save(key: str, data: dict) -> None:
     (_CACHE_DIR / key).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _get_demo_cache_file(filename: str) -> dict | None:
+    p = _DEMO_CACHE_DIR / filename
+    if p.exists():
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            log.info("[SARVAM DEMO_CACHE] Serving cached demo response from %s", filename)
+            data["note"] = "cached demo response"
+            data["is_demo_cache"] = True
+            return data
+        except Exception as e:
+            log.warning("Could not read demo cache %s: %s", p, e)
+    return None
+
+
 class SarvamClient:
     """
     Wrapper around Sarvam AI services with:
       - Runtime configuration from config/models.yaml
+      - DEMO_CACHE mode (serves pre-validated demo cache when DEMO_CACHE=1)
       - MOCK mode (returns realistic mock responses from mocks/ without network)
       - On-disk JSON cache (caches only masked, non-PII data)
       - Automatic retries (2 retries) and timeout handling
@@ -57,17 +74,22 @@ class SarvamClient:
     def __init__(self, mock: bool | None = None) -> None:
         self.cfg = get_models_config()
         env_mock = os.getenv("SARVAM_MOCK", "false").lower() in ("1", "true", "yes")
+        self.demo_cache = os.getenv("DEMO_CACHE", "0").lower() in ("1", "true", "yes")
         self.mock = env_mock if mock is None else mock
         self.api_key = os.getenv("SARVAM_API_KEY", "")
         self.max_retries = int(self.cfg.get("max_retries", 2))
         self.timeout = int(self.cfg.get("request_timeout_seconds", 45))
+
+        if self.demo_cache:
+            log.info("[SARVAM] DEMO_CACHE=1 active — cached demo responses enabled for offline reliability.")
 
         if self.mock:
             log.warning("[SARVAM] MOCK mode active - responses loaded from mocks/.")
             self._sdk = None
         else:
             if not self.api_key:
-                log.warning("SARVAM_API_KEY not set - falling back to MOCK mode.")
+                if not self.demo_cache:
+                    log.warning("SARVAM_API_KEY not set - falling back to MOCK mode.")
                 self.mock = True
                 self._sdk = None
             else:
@@ -105,6 +127,18 @@ class SarvamClient:
         use_cache: bool = True,
     ) -> dict:
         model_id = model or self.cfg.get("chat_model")
+        
+        if self.demo_cache:
+            demo_res = _get_demo_cache_file("tts_beti_scheme.json")
+            if demo_res:
+                return {
+                    "mock": False,
+                    "is_demo_cache": True,
+                    "note": "cached demo response",
+                    "content": demo_res.get("text", "नमस्ते, ग्राम-ज्ञान डेमो मोड में आपका स्वागत है।"),
+                    "model": model_id,
+                }
+
         if self.mock:
             return {
                 "mock": True,
@@ -122,17 +156,30 @@ class SarvamClient:
         def _do_chat():
             return self._sdk.chat.completions(model=model_id, messages=messages)
 
-        resp = self._retry_call(_do_chat)
-        elapsed = time.monotonic() - t0
-        result = {
-            "mock": False,
-            "content": resp.choices[0].message.content,
-            "model": model_id,
-            "latency_s": round(elapsed, 2),
-        }
-        if use_cache:
-            _cache_save(ck, result)
-        return result
+        try:
+            resp = self._retry_call(_do_chat)
+            elapsed = time.monotonic() - t0
+            result = {
+                "mock": False,
+                "content": resp.choices[0].message.content,
+                "model": model_id,
+                "latency_s": round(elapsed, 2),
+            }
+            if use_cache:
+                _cache_save(ck, result)
+            return result
+        except Exception as e:
+            if self.demo_cache:
+                demo_res = _get_demo_cache_file("tts_beti_scheme.json")
+                if demo_res:
+                    return {
+                        "mock": False,
+                        "is_demo_cache": True,
+                        "note": "cached demo response",
+                        "content": demo_res.get("text"),
+                        "model": model_id,
+                    }
+            raise e
 
     # ------------------------------------------------------------------
     # Speech-to-Text (Saaras)
@@ -146,10 +193,16 @@ class SarvamClient:
         use_cache: bool = True,
     ) -> dict:
         model_id = model or self.cfg.get("stt_model")
+
+        if self.demo_cache:
+            demo_stt = _get_demo_cache_file("stt_beti_scheme.json")
+            if demo_stt:
+                return demo_stt
+
         if self.mock:
             return {
                 "mock": True,
-                "transcript": "[MOCK] नमस्ते, मुझे अपनी राशन कार्ड और आवास योजना की स्थिति जाननी है।",
+                "transcript": "मेरी बेटी के लिए क्या योजना है?",
                 "language": language_code,
             }
 
@@ -171,17 +224,24 @@ class SarvamClient:
                     mode=mode,
                 )
 
-        resp = self._retry_call(_do_stt)
-        elapsed = time.monotonic() - t0
-        result = {
-            "mock": False,
-            "transcript": resp.transcript,
-            "language": language_code,
-            "latency_s": round(elapsed, 2),
-        }
-        if use_cache:
-            _cache_save(ck, result)
-        return result
+        try:
+            resp = self._retry_call(_do_stt)
+            elapsed = time.monotonic() - t0
+            result = {
+                "mock": False,
+                "transcript": resp.transcript,
+                "language": language_code,
+                "latency_s": round(elapsed, 2),
+            }
+            if use_cache:
+                _cache_save(ck, result)
+            return result
+        except Exception as e:
+            if self.demo_cache:
+                demo_stt = _get_demo_cache_file("stt_beti_scheme.json")
+                if demo_stt:
+                    return demo_stt
+            raise e
 
     # ------------------------------------------------------------------
     # Text-to-Speech (Bulbul)
@@ -196,6 +256,11 @@ class SarvamClient:
     ) -> dict:
         model_id = model or self.cfg.get("tts_model")
         speaker_id = speaker or self.cfg.get("tts_default_speaker")
+
+        if self.demo_cache:
+            demo_tts = _get_demo_cache_file("tts_beti_scheme.json")
+            if demo_tts and demo_tts.get("audio_b64"):
+                return demo_tts
 
         if self.mock:
             return {
@@ -218,18 +283,25 @@ class SarvamClient:
                 speaker=speaker_id,
             )
 
-        audio_resp = self._retry_call(_do_tts)
-        elapsed = time.monotonic() - t0
-        audios = getattr(audio_resp, "audios", None) or []
-        audio_b64 = "".join(audios) if audios else ""
-        result = {
-            "mock": False,
-            "audio_b64": audio_b64,
-            "latency_s": round(elapsed, 2),
-        }
-        if use_cache:
-            _cache_save(ck, result)
-        return result
+        try:
+            audio_resp = self._retry_call(_do_tts)
+            elapsed = time.monotonic() - t0
+            audios = getattr(audio_resp, "audios", None) or []
+            audio_b64 = "".join(audios) if audios else ""
+            result = {
+                "mock": False,
+                "audio_b64": audio_b64,
+                "latency_s": round(elapsed, 2),
+            }
+            if use_cache:
+                _cache_save(ck, result)
+            return result
+        except Exception as e:
+            if self.demo_cache:
+                demo_tts = _get_demo_cache_file("tts_beti_scheme.json")
+                if demo_tts:
+                    return demo_tts
+            raise e
 
     # ------------------------------------------------------------------
     # Document AI - Digitise (OCR text/markdown)
@@ -244,8 +316,33 @@ class SarvamClient:
         original_filename: str | None = None,
     ) -> dict:
         fmt = output_format or self.cfg.get("doc_digitise_output_format", "md")
+        fn = (original_filename or Path(file_path).stem).lower()
+
+        if self.demo_cache:
+            if "notice" in fn:
+                demo_not = _get_demo_cache_file("doc_notice_extract.json")
+                if demo_not:
+                    return {
+                        "mock": False,
+                        "is_demo_cache": True,
+                        "note": "cached demo response",
+                        "job_id": demo_not.get("job_id", "demo-notice-001"),
+                        "status": "completed",
+                        "text": demo_not.get("result", {}).get("noticeDetails", {}).get("summary", ""),
+                    }
+            elif "ration" in fn:
+                demo_rat = _get_demo_cache_file("doc_ration_extract.json")
+                if demo_rat:
+                    return {
+                        "mock": False,
+                        "is_demo_cache": True,
+                        "note": "cached demo response",
+                        "job_id": demo_rat.get("job_id", "demo-ration-001"),
+                        "status": "completed",
+                        "text": "खाद्य एवं रसद विभाग उत्तर प्रदेश राशन कार्ड (PHH) मुखिया: रमेश कुमार",
+                    }
+
         if self.mock:
-            fn = (original_filename or Path(file_path).stem).lower()
             if "ration" in fn:
                 mock_text = "खाद्य एवं रसद विभाग उत्तर प्रदेश राशन कार्ड (PHH) मुखिया: रमेश कुमार जिला: वाराणसी सदस्य: सुनीता देवी, अमन कुमार कार्ड संख्या: 987654324589"
             elif "aadhaar" in fn or "aadhar" in fn:
@@ -280,37 +377,51 @@ class SarvamClient:
                     output_format=fmt,
                 )
 
-        job = self._retry_call(_start_job)
-        job_id = getattr(job, "job_id", str(job))
+        try:
+            job = self._retry_call(_start_job)
+            job_id = getattr(job, "job_id", str(job))
 
-        TERMINAL = {"completed", "partially_completed", "failed", "rejected"}
-        while True:
-            st = self._sdk.doc_ai.get_status(job_id=job_id)
-            status = getattr(st, "status", "unknown").lower()
-            if status in TERMINAL:
-                break
-            if time.monotonic() - t0 > timeout:
-                raise TimeoutError(f"doc_digitise timed out after {timeout}s")
-            time.sleep(poll_interval)
+            TERMINAL = {"completed", "partially_completed", "failed", "rejected"}
+            while True:
+                st = self._sdk.doc_ai.get_status(job_id=job_id)
+                status = getattr(st, "status", "unknown").lower()
+                if status in TERMINAL:
+                    break
+                if time.monotonic() - t0 > timeout:
+                    raise TimeoutError(f"doc_digitise timed out after {timeout}s")
+                time.sleep(poll_interval)
 
-        if status in ("completed", "partially_completed"):
-            dl = self._sdk.doc_ai.get_download_url(job_id=job_id)
+            if status in ("completed", "partially_completed"):
+                dl = self._sdk.doc_ai.get_download_url(job_id=job_id)
+                return {
+                    "mock": False,
+                    "job_id": job_id,
+                    "status": status,
+                    "download_url": getattr(dl, "url", None),
+                    "latency_s": round(time.monotonic() - t0, 2),
+                }
+
             return {
                 "mock": False,
                 "job_id": job_id,
                 "status": status,
-                "download_url": getattr(dl, "url", None),
+                "download_url": None,
+                "error": f"Digitise ended with status: {status}",
                 "latency_s": round(time.monotonic() - t0, 2),
             }
-
-        return {
-            "mock": False,
-            "job_id": job_id,
-            "status": status,
-            "download_url": None,
-            "error": f"Digitise ended with status: {status}",
-            "latency_s": round(time.monotonic() - t0, 2),
-        }
+        except Exception as e:
+            if self.demo_cache and "notice" in fn:
+                demo_not = _get_demo_cache_file("doc_notice_extract.json")
+                if demo_not:
+                    return {
+                        "mock": False,
+                        "is_demo_cache": True,
+                        "note": "cached demo response",
+                        "job_id": demo_not.get("job_id", "demo-notice-001"),
+                        "status": "completed",
+                        "text": demo_not.get("result", {}).get("noticeDetails", {}).get("summary", ""),
+                    }
+            raise e
 
     # ------------------------------------------------------------------
     # Document AI - Extract (Structured fields)
@@ -326,6 +437,16 @@ class SarvamClient:
         timeout: int = 60,
     ) -> dict:
         fmt = output_format or self.cfg.get("doc_extract_output_format", "json")
+
+        if self.demo_cache:
+            if doc_type == "official_notice":
+                demo_not = _get_demo_cache_file("doc_notice_extract.json")
+                if demo_not:
+                    return demo_not
+            elif doc_type == "ration_card":
+                demo_rat = _get_demo_cache_file("doc_ration_extract.json")
+                if demo_rat:
+                    return demo_rat
 
         if self.mock:
             mock_res = get_mock_doc_result(doc_type)
@@ -352,42 +473,54 @@ class SarvamClient:
                     output_format=fmt,
                 )
 
-        job = self._retry_call(_start_extract)
-        job_id = getattr(job, "job_id", str(job))
+        try:
+            job = self._retry_call(_start_extract)
+            job_id = getattr(job, "job_id", str(job))
 
-        TERMINAL = {"completed", "partially_completed", "failed", "rejected"}
-        while True:
-            st = self._sdk.doc_ai.get_status(job_id=job_id)
-            status = getattr(st, "status", "unknown").lower()
-            if status in TERMINAL:
-                break
-            if time.monotonic() - t0 > timeout:
-                raise TimeoutError(f"doc_extract timed out after {timeout}s")
-            time.sleep(poll_interval)
+            TERMINAL = {"completed", "partially_completed", "failed", "rejected"}
+            while True:
+                st = self._sdk.doc_ai.get_status(job_id=job_id)
+                status = getattr(st, "status", "unknown").lower()
+                if status in TERMINAL:
+                    break
+                if time.monotonic() - t0 > timeout:
+                    raise TimeoutError(f"doc_extract timed out after {timeout}s")
+                time.sleep(poll_interval)
 
-        if status in ("completed", "partially_completed"):
-            raw_res = self._sdk.doc_ai.get_results(job_id=job_id)
-            extracted_data = getattr(raw_res, "result", raw_res)
-            # Strict PII sanitization before caching or returning
-            schema_fields = schema.get("fields", []) if isinstance(schema, dict) else []
-            if isinstance(extracted_data, dict):
-                sanitized_data = sanitize_extracted_dict(extracted_data, schema_fields)
-            else:
-                sanitized_data = extracted_data
+            if status in ("completed", "partially_completed"):
+                raw_res = self._sdk.doc_ai.get_results(job_id=job_id)
+                extracted_data = getattr(raw_res, "result", raw_res)
+                # Strict PII sanitization before caching or returning
+                schema_fields = schema.get("fields", []) if isinstance(schema, dict) else []
+                if isinstance(extracted_data, dict):
+                    sanitized_data = sanitize_extracted_dict(extracted_data, schema_fields)
+                else:
+                    sanitized_data = extracted_data
+
+                return {
+                    "mock": False,
+                    "job_id": job_id,
+                    "status": status,
+                    "result": sanitized_data,
+                    "latency_s": round(time.monotonic() - t0, 2),
+                }
 
             return {
                 "mock": False,
                 "job_id": job_id,
                 "status": status,
-                "result": sanitized_data,
+                "result": None,
+                "error": f"Extract ended with status: {status}",
                 "latency_s": round(time.monotonic() - t0, 2),
             }
-
-        return {
-            "mock": False,
-            "job_id": job_id,
-            "status": status,
-            "result": None,
-            "error": f"Extract ended with status: {status}",
-            "latency_s": round(time.monotonic() - t0, 2),
-        }
+        except Exception as e:
+            if self.demo_cache:
+                if doc_type == "official_notice":
+                    demo_not = _get_demo_cache_file("doc_notice_extract.json")
+                    if demo_not:
+                        return demo_not
+                elif doc_type == "ration_card":
+                    demo_rat = _get_demo_cache_file("doc_ration_extract.json")
+                    if demo_rat:
+                        return demo_rat
+            raise e

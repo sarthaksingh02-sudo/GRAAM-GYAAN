@@ -1,0 +1,30 @@
+{
+  "mock": false,
+  "is_demo_cache": true,
+  "note": "cached demo response",
+  "job_id": "demo-cache-job-ration-001",
+  "status": "completed",
+  "result": {
+    "doc_type": "ration_card",
+    "rationCard": {
+      "ration_card_number": "XXXX-XXXX-4589",
+      "head_of_family": "Ramesh Kumar",
+      "card_type": "PHH",
+      "fair_price_shop_id": "FPS-VAR-042",
+      "district": "Varanasi",
+      "members": [
+        "Ramesh Kumar",
+        "Sunita Devi",
+        "Pooja Kumar",
+        "Aman Kumar"
+      ]
+    },
+    "extracted_fields": {
+      "card_number": "XXXX-XXXX-4589",
+      "card_type": "PHH",
+      "head_of_family": "Ramesh Kumar",
+      "members_count": 4
+    }
+  },
+  "latency_s": 0.38
+}

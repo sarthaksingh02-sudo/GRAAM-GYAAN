@@ -48,6 +48,10 @@ htmlcov/
 .coverage
 coverage.xml
 
-# Generated audio / output files from smoke tests
+# Uploads and temporary test outputs
+uploads/
+*.db-wal
+*.db-shm
+*.db-journal
 scripts/output_*.wav
 scripts/output_*.mp3

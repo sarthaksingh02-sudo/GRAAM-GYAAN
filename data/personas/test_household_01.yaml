@@ -1,39 +1,52 @@
-﻿# data/personas/test_household_01.yaml
+# data/personas/test_household_01.yaml
 # Synthetic test persona — NOT a real person. Used only for unit tests and demos.
 
 household_id: "test-001"
 village: "Nayapara"
 panchayat: "Rampur Gram Panchayat"
-district: "Raipur"
-state: "Chhattisgarh"
+district: "Varanasi"
+state: "Uttar Pradesh"
 language_pref: "hi-IN"
 
 members:
   - name: "Ramesh Kumar (TEST)"
-    dob: "1985-03-15"
+    dob: "1984-05-14"
     gender: "male"
+    relation: "self"
     education_level: "secondary"
     occupation: "farmer"
     caste_category: "obc"
     is_disabled: false
-    land_acres: 2.5
+    land_acres: 1.5
 
   - name: "Sunita Devi (TEST)"
-    dob: "1988-07-22"
+    dob: "1988-08-20"
     gender: "female"
+    relation: "spouse"
     education_level: "primary"
     occupation: "homemaker"
     caste_category: "obc"
     is_disabled: false
-    land_acres: 0
+    land_acres: 0.0
 
-  - name: "Arun Kumar (TEST)"
-    dob: "2006-11-10"
+  - name: "Pooja Kumar (TEST)"
+    dob: "2018-06-15"
+    gender: "female"
+    relation: "daughter"
+    education_level: "primary"
+    occupation: "student"
+    caste_category: "obc"
+    is_disabled: false
+    land_acres: 0.0
+
+  - name: "Aman Kumar (TEST)"
+    dob: "2012-03-10"
     gender: "male"
+    relation: "son"
     education_level: "middle"
     occupation: "student"
     caste_category: "obc"
     is_disabled: false
-    land_acres: 0
+    land_acres: 0.0
 
-notes: "TEST PERSONA — not real. Created for unit tests only."
+notes: "TEST PERSONA — not real. Created for unit tests and offline demo script."
